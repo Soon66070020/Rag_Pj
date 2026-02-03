@@ -1,0 +1,40 @@
+# Core Dependencies
+# python==3.11.*  # Python version requirement (already installed)
+python-dotenv==1.0.1
+pyyaml==6.0.2
+requests==2.32.3
+
+# Thai Language Processing
+pythainlp==5.0.4
+
+# LLM API Client
+openai==1.54.3
+tenacity==8.5.0
+
+# Vector Database
+weaviate-client==4.7.1
+
+# Document Processing
+pdfplumber==0.11.4
+
+# Embeddings & Reranking (Multilingual including Thai)
+numpy<2  # Required: NumPy 2.x has compatibility issues
+torch==2.3.1
+sentence-transformers==3.0.1
+FlagEmbedding==1.2.11
+
+# Development Tools
+pytest==8.3.3
+black==24.8.0
+mypy==1.11.2
+
+# Optional: LangChain (ถ้าต้องการใช้)
+# langchain==0.2.16
+# langchain-community==0.2.16
+# langchain-core==0.2.38
+
+# Optional: Evaluation Metrics (ติดตั้งทีหลังถ้าต้องการ)
+# bert-score==0.3.13
+# rouge-score==0.1.2
+# nltk==3.9.1
+# evaluate==0.4.2

@@ -1,0 +1,48 @@
+{
+  "class": "MedicalGuideline",
+  "description": "Post-oral surgery dental guidelines with Thai language support",
+  "vectorizer": "none",
+  "properties": [
+    {
+      "name": "content",
+      "dataType": ["text"],
+      "description": "Text content of the document chunk (Thai or mixed Thai-English)"
+    },
+    {
+      "name": "category",
+      "dataType": ["text"],
+      "description": "Category classification (Post-op Care, Medication, Emergency, Nutrition)",
+      "indexFilterable": true,
+      "indexSearchable": true
+    },
+    {
+      "name": "source_file",
+      "dataType": ["text"],
+      "description": "Original filename (supports Thai filenames)"
+    },
+    {
+      "name": "page_number",
+      "dataType": ["int"],
+      "description": "Page number in source document"
+    },
+    {
+      "name": "chunk_index",
+      "dataType": ["int"],
+      "description": "Sequential index of this chunk within the source document"
+    },
+    {
+      "name": "language",
+      "dataType": ["text"],
+      "description": "Primary language of content (thai, english, mixed)",
+      "indexFilterable": true
+    },
+    {
+      "name": "created_at",
+      "dataType": ["date"],
+      "description": "Timestamp when document was indexed"
+    }
+  ],
+  "vectorIndexConfig": {
+    "distance": "cosine"
+  }
+}

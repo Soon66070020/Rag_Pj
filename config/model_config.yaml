@@ -1,0 +1,61 @@
+# Model configurations for RAG-based Medical Q&A System
+# Thai Language Support Primary Focus 🇹🇭
+
+# BGE-M3 Embedding Model (Multilingual including Thai)
+embedding:
+  model_name: "BAAI/bge-m3"
+  use_fp16: true  # Use half precision for faster inference
+  batch_size: 32
+  max_length: 512
+  normalize_embeddings: true
+  device: "cuda"  # or "cpu" if GPU not available
+
+# BGE-Reranker Model (Multilingual)
+reranker:
+  model_name: "BAAI/bge-reranker-v2-m3"
+  top_n: 5  # Final number of documents after reranking
+  batch_size: 32
+  use_fp16: true
+  device: "cuda"  # or "cpu"
+
+# DeepSeek LLM Configuration
+llm:
+  model_name: "deepseek-chat"
+  api_base: "https://api.deepseek.com/v1"
+  temperature: 0.1  # Low temperature for medical accuracy
+  max_tokens: 2048
+  top_p: 0.9
+  timeout: 60  # API timeout in seconds
+  stream: false
+
+# Retrieval Pipeline Parameters
+retrieval:
+  alpha: 0.7  # Hybrid search blending (0.0=sparse only, 1.0=dense only)
+  top_k: 20  # Initial candidates from hybrid search
+  top_n: 5   # Final results after reranking
+  use_hyde: true  # Enable HyDE query expansion
+  hyde_temperature: 0.3  # Temperature for HyDE generation
+  enable_metadata_filter: true  # Enable category-based filtering
+
+# Chunking Strategy for Document Processing
+chunking:
+  strategy: "semantic"  # Options: "semantic", "fixed", "recursive"
+  chunk_size: 512  # Target chunk size in tokens
+  chunk_overlap: 50  # Overlap between chunks
+  min_chunk_size: 100  # Minimum chunk size
+  max_chunk_size: 800  # Maximum chunk size
+
+# Thai Language Processing Settings 🇹🇭
+thai_processing:
+  tokenization_engine: "newmm"  # Options: "newmm", "longest", "attacut"
+  remove_stopwords: true
+  normalize_text: true
+  extract_keywords: true
+  keyword_top_n: 10
+
+# Weaviate Configuration
+weaviate:
+  collection_name: "MedicalGuideline"
+  batch_size: 100
+  consistency_level: "QUORUM"
+  timeout: 30
