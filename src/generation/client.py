@@ -187,17 +187,24 @@ class DeepSeekClient:
             content = choice.message.content
             finish_reason = choice.finish_reason
 
+            # Extract reasoning content for deepseek-reasoner
+            reasoning_content = getattr(choice.message, 'reasoning_content', None)
+            if reasoning_content:
+                logger.info(f"Reasoning content ({len(reasoning_content)} chars): {reasoning_content[:200]}...")
+
             # Calculate generation time
             generation_time_ms = (time.time() - start_time) * 1000
 
             # Build response dict
             result = {
                 "content": content,
+                "reasoning_content": reasoning_content,  # Thinking process from deepseek-reasoner
                 "finish_reason": finish_reason,
                 "usage": {
                     "prompt_tokens": response.usage.prompt_tokens,
                     "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens
+                    "total_tokens": response.usage.total_tokens,
+                    "reasoning_tokens": getattr(response.usage, 'reasoning_tokens', 0)
                 },
                 "model": response.model,
                 "generation_time_ms": generation_time_ms
@@ -205,6 +212,7 @@ class DeepSeekClient:
 
             logger.info(
                 f"Generation complete: {result['usage']['total_tokens']} tokens "
+                f"(reasoning: {result['usage']['reasoning_tokens']}) "
                 f"in {generation_time_ms:.2f}ms"
             )
 

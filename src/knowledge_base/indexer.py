@@ -76,7 +76,8 @@ class DocumentIndexer:
             chunk_size=chunking_config.get('chunk_size', 512),
             chunk_overlap=chunking_config.get('chunk_overlap', 50),
             min_chunk_size=chunking_config.get('min_chunk_size', 100),
-            max_chunk_size=chunking_config.get('max_chunk_size', 800)
+            max_chunk_size=chunking_config.get('max_chunk_size', 800),
+            use_token_count=chunking_config.get('use_token_count', False)
         )
 
         # Initialize metadata extractor

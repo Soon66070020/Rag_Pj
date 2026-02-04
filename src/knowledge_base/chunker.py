@@ -65,23 +65,27 @@ class SemanticChunker:
         chunk_overlap: int = 50,
         min_chunk_size: int = 100,
         max_chunk_size: int = 800,
-        sentence_tokenizer: str = "crfcut"
+        sentence_tokenizer: str = "crfcut",
+        use_token_count: bool = False
     ):
         """Initialize semantic chunker.
 
         Args:
-            chunk_size: Target chunk size in characters.
-            chunk_overlap: Overlap between chunks in characters.
-            min_chunk_size: Minimum chunk size in characters.
-            max_chunk_size: Maximum chunk size in characters.
+            chunk_size: Target chunk size in characters (or tokens if use_token_count=True).
+            chunk_overlap: Overlap between chunks in characters (or tokens).
+            min_chunk_size: Minimum chunk size in characters (or tokens).
+            max_chunk_size: Maximum chunk size in characters (or tokens).
             sentence_tokenizer: pythainlp sentence tokenizer engine.
                 Options: "crfcut" (default, most accurate), "whitespace+newline"
+            use_token_count: If True, count Thai tokens instead of characters.
+                Uses pythainlp.tokenize.word_tokenize for tokenization.
         """
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.min_chunk_size = min_chunk_size
         self.max_chunk_size = max_chunk_size
         self.sentence_tokenizer = sentence_tokenizer
+        self.use_token_count = use_token_count
 
         # Validate parameters
         if chunk_size < min_chunk_size:
@@ -94,8 +98,9 @@ class SemanticChunker:
                 f"chunk_overlap ({chunk_overlap}) must be < chunk_size ({chunk_size})"
             )
 
+        unit = "tokens" if use_token_count else "characters"
         logger.info(
-            f"Initialized SemanticChunker with chunk_size={chunk_size}, "
+            f"Initialized SemanticChunker with chunk_size={chunk_size} {unit}, "
             f"overlap={chunk_overlap}, min={min_chunk_size}, max={max_chunk_size}"
         )
 
@@ -233,6 +238,38 @@ class SemanticChunker:
 
         return sentences
 
+    def _count_tokens(self, text: str) -> int:
+        """Count tokens in text using pythainlp word tokenization.
+
+        Uses newmm (default) tokenizer which is optimized for Thai text.
+
+        Args:
+            text: Text to count tokens for.
+
+        Returns:
+            Number of tokens.
+        """
+        try:
+            from pythainlp.tokenize import word_tokenize
+            tokens = word_tokenize(text, engine="newmm")
+            return len(tokens)
+        except ImportError:
+            logger.warning("pythainlp not available, falling back to character count")
+            return len(text)
+
+    def _get_length(self, text: str) -> int:
+        """Get length of text in either tokens or characters.
+
+        Args:
+            text: Text to measure.
+
+        Returns:
+            Length in tokens (if use_token_count=True) or characters.
+        """
+        if self.use_token_count:
+            return self._count_tokens(text)
+        return len(text)
+
     def _group_sentences_into_chunks(self, sentences: List[str]) -> List[str]:
         """Group sentences into chunks respecting size constraints.
 
@@ -256,7 +293,7 @@ class SemanticChunker:
         current_size = 0
 
         for i, sentence in enumerate(sentences):
-            sentence_len = len(sentence)
+            sentence_len = self._get_length(sentence)
 
             # Check if adding this sentence would exceed max size
             if current_size + sentence_len > self.max_chunk_size and current_chunk:
@@ -264,7 +301,7 @@ class SemanticChunker:
                 chunk_text = ' '.join(current_chunk)
 
                 # Only add chunk if it meets minimum size
-                if len(chunk_text) >= self.min_chunk_size:
+                if self._get_length(chunk_text) >= self.min_chunk_size:
                     chunks.append(chunk_text)
 
                     # Start new chunk with overlap from previous chunk
@@ -272,7 +309,7 @@ class SemanticChunker:
                         current_chunk, self.chunk_overlap
                     )
                     current_chunk = overlap_sentences
-                    current_size = sum(len(s) for s in current_chunk)
+                    current_size = sum(self._get_length(s) for s in current_chunk)
                 else:
                     # Chunk too small, keep accumulating
                     pass
@@ -286,7 +323,7 @@ class SemanticChunker:
                 chunk_text = ' '.join(current_chunk)
 
                 # Ensure chunk meets minimum size
-                if len(chunk_text) >= self.min_chunk_size:
+                if self._get_length(chunk_text) >= self.min_chunk_size:
                     chunks.append(chunk_text)
 
                     # Start new chunk with overlap
@@ -294,14 +331,14 @@ class SemanticChunker:
                         current_chunk, self.chunk_overlap
                     )
                     current_chunk = overlap_sentences
-                    current_size = sum(len(s) for s in current_chunk)
+                    current_size = sum(self._get_length(s) for s in current_chunk)
 
         # Add remaining sentences as final chunk
         if current_chunk:
             chunk_text = ' '.join(current_chunk)
 
             # Handle final chunk
-            if len(chunk_text) >= self.min_chunk_size:
+            if self._get_length(chunk_text) >= self.min_chunk_size:
                 chunks.append(chunk_text)
             elif chunks:
                 # Too small for standalone, merge with previous chunk
@@ -321,7 +358,7 @@ class SemanticChunker:
 
         Args:
             sentences: List of sentences.
-            overlap_size: Target overlap size in characters.
+            overlap_size: Target overlap size in tokens/characters.
 
         Returns:
             List of sentences for overlap.
@@ -331,7 +368,7 @@ class SemanticChunker:
 
         # Take sentences from end until we reach overlap size
         for sentence in reversed(sentences):
-            sentence_len = len(sentence)
+            sentence_len = self._get_length(sentence)
 
             if current_size + sentence_len > overlap_size:
                 break
@@ -395,14 +432,16 @@ def chunk_document(
     text: str,
     chunk_size: int = 512,
     chunk_overlap: int = 50,
+    use_token_count: bool = False,
     **kwargs
 ) -> List[TextChunk]:
     """Convenience function to chunk a document.
 
     Args:
         text: Text to chunk.
-        chunk_size: Target chunk size in characters.
+        chunk_size: Target chunk size in characters (or tokens if use_token_count=True).
         chunk_overlap: Overlap between chunks.
+        use_token_count: If True, count Thai tokens instead of characters.
         **kwargs: Additional arguments for SemanticChunker.
 
     Returns:
@@ -410,10 +449,13 @@ def chunk_document(
 
     Example:
         >>> chunks = chunk_document("ฉันควรกินยา...", chunk_size=256)
+        >>> # With token counting
+        >>> chunks = chunk_document("ฉันควรกินยา...", chunk_size=128, use_token_count=True)
     """
     chunker = SemanticChunker(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
+        use_token_count=use_token_count,
         **kwargs
     )
     return chunker.chunk_text(text)
