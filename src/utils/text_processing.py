@@ -6,15 +6,74 @@ keyword extraction for both queries and knowledge base documents.
 The system primarily supports Thai language with mixed Thai-English documents.
 """
 
+import re
 import unicodedata
 from typing import List
 from collections import Counter
+
+
+def correct_ocr_errors(text: str) -> str:
+    """Correct common PDF/OCR extraction errors in Thai text using regex.
+
+    Fixes common issues found in Thai PDF extraction:
+    - Numbers replacing Thai characters (e.g., "2" instead of "อ")
+    - OCR errors like "โา" instead of "า"
+    - Duplicate vowels (e.g., "าา" instead of "า")
+    - Unicode private use area characters
+    - Replacement characters (U+FFFD)
+    - Abnormal spacing between Thai characters
+
+    Args:
+        text: Text extracted from PDF/OCR.
+
+    Returns:
+        Corrected text with common extraction errors fixed.
+
+    Example:
+        >>> correct_ocr_errors("น้ำ2ัดลม")
+        'น้ำอัดลม'
+        >>> correct_ocr_errors("จ ำ หน่ าย")
+        'จำหน่าย'
+    """
+    if not text:
+        return text
+
+    # 1. Single character substitutions (common OCR errors)
+    single_char_substitutions = {
+        '2': 'อ',  # "น้ำ2ัดลม" → "น้ำอัดลม"
+    }
+    text = text.translate(str.maketrans(single_char_substitutions))
+
+    # 2. Fix "โา" OCR error → "า"
+    text = re.sub(r"โา", "า", text)  # เช่น "จโาหน่าย" → "จำหน่าย"
+
+    # 3. Fix duplicate vowels
+    text = re.sub(r"าา", "า", text)  # "าา" → "า"
+    text = re.sub(r"ำา", "ำ", text)  # "ำา" → "ำ" (เช่น "ทำา" → "ทำ")
+
+    # 4. Remove Unicode private use area characters (often from PDF fonts)
+    text = re.sub(r"[\uf700-\uf74f]", "", text)
+
+    # 5. Remove replacement characters
+    text = re.sub(r"[�\ufffd]", "", text)
+
+    # 6. Normalize newlines, tabs, and multiple spaces
+    text = re.sub(r"[\n\t]+", " ", text)
+    text = re.sub(r"\s+", " ", text)
+
+    # 7. Remove abnormal spacing between Thai characters
+    # Range [ก-์] includes consonants, vowels, and tone marks
+    # "จ ำ" → "จำ", "ท ำ" → "ทำ", "ค ว า ม" → "ความ"
+    text = re.sub(r"(?<=[ก-์])\s(?=[ก-์])", "", text)
+
+    return text.strip()
 
 
 def normalize_thai_text(text: str) -> str:
     """Normalize Thai text for processing.
 
     Performs comprehensive text normalization for Thai language:
+    - Correct OCR/PDF extraction errors
     - Unicode NFC normalization (preserves Thai characters)
     - pythainlp text normalization
     - Remove excessive whitespace
@@ -31,6 +90,9 @@ def normalize_thai_text(text: str) -> str:
         >>> normalize_thai_text(text)
         'ฉันควร กิน อะไร'
     """
+    # First, correct OCR/PDF extraction errors
+    text = correct_ocr_errors(text)
+
     # Unicode normalization (NFC preserves Thai characters)
     text = unicodedata.normalize('NFC', text)
 

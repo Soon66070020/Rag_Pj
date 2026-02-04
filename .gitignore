@@ -42,6 +42,7 @@ env_rag
 # Logs
 logs/
 *.log
+nul
 
 # Outputs
 outputs/
