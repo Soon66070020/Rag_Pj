@@ -15,7 +15,7 @@ tenacity==8.5.0
 weaviate-client==4.7.1
 
 # Document Processing
-pdfplumber==0.11.4
+docling==2.16.0
 
 # Embeddings & Reranking (Multilingual including Thai)
 numpy<2  # Required: NumPy 2.x has compatibility issues

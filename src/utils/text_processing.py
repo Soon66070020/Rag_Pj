@@ -6,17 +6,54 @@ keyword extraction for both queries and knowledge base documents.
 The system primarily supports Thai language with mixed Thai-English documents.
 """
 
+import re
 import unicodedata
 from typing import List
 from collections import Counter
+
+
+def clean_extraction_artifacts(text: str) -> str:
+    """ลบอักขระแปลกปลอมจาก PDF extraction.
+
+    Removes common artifacts from PDF text extraction:
+    - Numbers inserted between Thai characters (e.g., "ควร2ดูแล" → "ควร ดูแล")
+    - Broken Thai vowels (สระอำที่พัง)
+    - Other extraction noise
+
+    Args:
+        text: Raw text from PDF extraction.
+
+    Returns:
+        Cleaned text with artifacts removed.
+
+    Example:
+        >>> clean_extraction_artifacts("ควร2ดูแลตนเ2อง")
+        'ควร ดูแลตนเ อง'
+    """
+    if not text:
+        return text
+
+    # ลบตัวเลข 2 ที่แทรกกลางคำไทย (พบบ่อยใน PDF extraction)
+    # เช่น "ควร2ดูแล" → "ควร ดูแล"
+    text = re.sub(r'(?<=[ก-ฮะ-์])2(?=[ก-ฮะ-์])', ' ', text)
+
+    # ลบตัวเลขอื่นๆ ที่แทรกกลางคำไทย (ไม่ใช่ตัวเลขจริง)
+    # เช่น "ตนเ1อง" → "ตนเอง"
+    text = re.sub(r'(?<=[ก-ฮะ-์])[0-9](?=[ก-ฮะ-์])', '', text)
+
+    # ลบ whitespace ซ้ำๆ ที่เกิดจากการ clean
+    text = re.sub(r' +', ' ', text)
+
+    return text
 
 
 def normalize_thai_text(text: str) -> str:
     """Normalize Thai text for processing.
 
     Performs comprehensive text normalization for Thai language:
+    - Clean PDF extraction artifacts (numbers inserted in words)
     - Unicode NFC normalization (preserves Thai characters)
-    - pythainlp text normalization
+    - pythainlp text normalization (fix incorrect vowel/tone mark order)
     - Remove excessive whitespace
     - Handle mixed Thai-English text
 
@@ -31,10 +68,13 @@ def normalize_thai_text(text: str) -> str:
         >>> normalize_thai_text(text)
         'ฉันควร กิน อะไร'
     """
-    # Unicode normalization (NFC preserves Thai characters)
+    # Step 1: Clean PDF extraction artifacts
+    text = clean_extraction_artifacts(text)
+
+    # Step 2: Unicode normalization (NFC preserves Thai characters)
     text = unicodedata.normalize('NFC', text)
 
-    # pythainlp normalization
+    # Step 3: pythainlp normalization (จัดการวรรณยุกต์ที่วางลำดับผิด)
     try:
         from pythainlp.util import normalize as thai_normalize
         text = thai_normalize(text)
@@ -42,7 +82,7 @@ def normalize_thai_text(text: str) -> str:
         # Fall back to basic normalization if pythainlp not available
         pass
 
-    # Whitespace cleanup - remove extra spaces while preserving Thai spacing
+    # Step 4: Whitespace cleanup - remove extra spaces while preserving Thai spacing
     text = ' '.join(text.split())
 
     return text

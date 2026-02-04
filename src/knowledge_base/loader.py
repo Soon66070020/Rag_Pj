@@ -1,14 +1,15 @@
-"""Document loader module for PDF and text files.
+"""Do  ment loader module for PDF and text files.
 
 This module provides loaders for different file formats with proper
 handling of Thai language text encoding and extraction.
 
 Supports:
-- PDF files (with Thai text preservation)
+- PDF files using IBM Docling (with Thai text preservation)
 - Plain text files (.txt, .md)
 """
 
 import logging
+import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
@@ -78,10 +79,10 @@ class DocumentLoader:
 
 
 class PDFLoader(DocumentLoader):
-    """PDF document loader with Thai text support.
+    """PDF document loader using IBM Docling.
 
-    Uses pdfplumber for robust text extraction that handles
-    Thai characters and mixed Thai-English documents.
+    Uses Docling for advanced document extraction with layout analysis.
+    Handles Thai characters, mixed Thai-English documents, and tables.
 
     Example:
         >>> loader = PDFLoader()
@@ -89,18 +90,21 @@ class PDFLoader(DocumentLoader):
         >>> print(f"Loaded {len(pages)} pages")
     """
 
-    def __init__(self, normalize_text: bool = True, extract_tables: bool = False):
+    def __init__(self, normalize_text: bool = True, extract_tables: bool = True):
         """Initialize PDF loader.
 
         Args:
             normalize_text: Whether to normalize Thai text.
-            extract_tables: Whether to extract table content (experimental).
+            extract_tables: Whether to extract table content (enabled by default with Docling).
         """
         super().__init__(normalize_text)
         self.extract_tables = extract_tables
 
     def load(self, file_path: Path) -> List[LoadedPage]:
-        """Load PDF file and extract text page by page.
+        """Load PDF file and extract text using Docling.
+
+        Docling provides advanced layout analysis and structure preservation.
+        Extracts text as markdown with tables preserved.
 
         Args:
             file_path: Path to PDF file.
@@ -118,54 +122,59 @@ class PDFLoader(DocumentLoader):
             raise DocumentLoadError(f"Not a PDF file: {file_path}")
 
         try:
-            import pdfplumber
+            from docling.document_converter import DocumentConverter
         except ImportError:
             raise DocumentLoadError(
-                "pdfplumber is required for PDF loading. "
-                "Install with: pip install pdfplumber"
+                "docling is required for PDF loading. "
+                "Install with: pip install docling"
             )
 
-        logger.info(f"Loading PDF: {file_path}")
+        logger.info(f"Loading PDF with Docling: {file_path}")
         pages = []
 
         try:
-            with pdfplumber.open(file_path) as pdf:
-                total_pages = len(pdf.pages)
-                logger.info(f"PDF has {total_pages} pages")
+            # Initialize Docling converter
+            converter = DocumentConverter()
 
-                for page_num, page in enumerate(pdf.pages, start=1):
-                    # Extract text
-                    text = page.extract_text()
+            # Convert PDF document
+            result = converter.convert(str(file_path))
+            document = result.document
 
-                    if text is None or text.strip() == "":
-                        logger.warning(
-                            f"Page {page_num}/{total_pages} has no text content"
-                        )
-                        continue
+            # Get total page count from document
+            total_pages = len(document.pages) if hasattr(document, 'pages') else 1
+            logger.info(f"PDF has {total_pages} pages")
 
-                    # Normalize Thai text if enabled
-                    text = self._normalize_if_enabled(text)
+            # Export full document as markdown (preserves structure and tables)
+            full_markdown = document.export_to_markdown()
 
-                    # Build metadata
-                    metadata = {
-                        "width": page.width,
-                        "height": page.height,
-                        "total_pages": total_pages,
-                    }
+            # Try to split by page markers if available, otherwise process as sections
+            page_texts = self._split_into_pages(full_markdown, total_pages)
 
-                    # Add table count if extraction enabled
-                    if self.extract_tables:
-                        tables = page.extract_tables()
-                        metadata["table_count"] = len(tables) if tables else 0
+            for page_num, text in enumerate(page_texts, start=1):
+                if text is None or text.strip() == "":
+                    logger.warning(
+                        f"Page {page_num}/{len(page_texts)} has no text content"
+                    )
+                    continue
 
-                    pages.append(LoadedPage(
-                        text=text,
-                        page_number=page_num,
-                        metadata=metadata
-                    ))
+                # Normalize Thai text if enabled
+                text = self._normalize_if_enabled(text)
 
-                    if page_num % 10 == 0:
-                        logger.debug(f"Processed {page_num}/{total_pages} pages")
+                # Build metadata
+                metadata = {
+                    "total_pages": total_pages,
+                    "extraction_method": "docling",
+                    "format": "markdown",
+                }
+
+                pages.append(LoadedPage(
+                    text=text,
+                    page_number=page_num,
+                    metadata=metadata
+                ))
+
+                if page_num % 10 == 0:
+                    logger.debug(f"Processed {page_num}/{len(page_texts)} pages")
 
             logger.info(
                 f"Successfully loaded {len(pages)} pages from {file_path.name}"
@@ -176,6 +185,42 @@ class PDFLoader(DocumentLoader):
             error_msg = f"Failed to load PDF {file_path}: {e}"
             logger.error(error_msg)
             raise DocumentLoadError(error_msg) from e
+
+    def _split_into_pages(self, markdown_text: str, expected_pages: int) -> List[str]:
+        """Split markdown text into logical pages.
+
+        Attempts to split by page breaks or headers if the document
+        is structured. Falls back to treating as single page.
+
+        Args:
+            markdown_text: Full document as markdown.
+            expected_pages: Expected number of pages.
+
+        Returns:
+            List of text content, one per logical page.
+        """
+        # Try to split by page break markers (Docling may add these)
+        page_break_patterns = [
+            r'\n---\n',  # Horizontal rule as page break
+            r'\n\* \* \*\n',  # Asterisk separator
+            r'\f',  # Form feed character
+        ]
+
+        for pattern in page_break_patterns:
+            parts = re.split(pattern, markdown_text)
+            if len(parts) > 1:
+                logger.debug(f"Split document into {len(parts)} parts using pattern: {pattern}")
+                return [p.strip() for p in parts if p.strip()]
+
+        # If no page breaks found, try splitting by major headers
+        header_parts = re.split(r'\n(?=# )', markdown_text)
+        if len(header_parts) > 1:
+            logger.debug(f"Split document into {len(header_parts)} sections by headers")
+            return [p.strip() for p in header_parts if p.strip()]
+
+        # Fallback: return entire document as single page
+        logger.debug("No page breaks found, treating as single page")
+        return [markdown_text.strip()] if markdown_text.strip() else []
 
 
 class TextLoader(DocumentLoader):
