@@ -9,6 +9,8 @@ A Retrieval-Augmented Generation (RAG) system designed specifically for post-ora
 - **Thai Language Primary Support**: Fully optimized for Thai queries and mixed Thai-English medical documents
 - **Hybrid Search**: Combines dense (semantic) and sparse (lexical) retrieval for optimal accuracy
 - **Advanced Reranking**: Uses BGE-Reranker-v2-m3 for precise relevance scoring
+- **Token-Based Chunking**: Thai token counting using pythainlp for accurate semantic segmentation
+- **DeepSeek Reasoner**: Advanced reasoning model with 128K context and thinking process
 - **Strict Citation Enforcement**: All responses include mandatory source citations
 - **Category-Based Filtering**: Automatic intent classification (Emergency, Medication, Nutrition, Post-op Care)
 - **Medical Domain Optimized**: Conservative temperature settings and fact-based responses
@@ -20,7 +22,7 @@ User Query (Thai) → Query Processor (HyDE + BGE-M3) → Metadata Filter
                      ↓
           Hybrid Searcher (Weaviate) → BGE Reranker → Prompt Builder
                      ↓
-          DeepSeek LLM → Citation Enforcer → Thai Response with Citations
+          DeepSeek Reasoner (128K) → Citation Enforcer → Thai Response with Citations
 ```
 
 ## 📋 Prerequisites
@@ -134,6 +136,7 @@ The system is specifically designed for Thai language:
 
 ### Text Processing
 - **pythainlp** integration for Thai tokenization and normalization
+- **Token-based chunking**: Uses `word_tokenize` for accurate chunk sizing
 - Unicode NFC normalization to preserve Thai characters
 - Mixed Thai-English document handling
 
@@ -143,9 +146,10 @@ The system is specifically designed for Thai language:
 - No fine-tuning required
 
 ### Response Generation
-- DeepSeek LLM prompted for Thai output
+- **DeepSeek Reasoner** with thinking process for accurate medical responses
 - Proper medical terminology and polite tone (ครับ/ค่ะ)
 - Thai filename support in citations
+- Reasoning tokens logged for transparency
 
 ### Category Inference
 Uses Thai medical keywords:
@@ -190,9 +194,23 @@ retrieval:
   use_hyde: true  # Enable HyDE expansion
 
 llm:
+  model_name: "deepseek-reasoner"  # 128K context, 64K output
   temperature: 0.1  # Conservative for medical accuracy
-  max_tokens: 2048
+  max_tokens: 16384
+  timeout: 120  # Increased for reasoning model
+
+chunking:
+  chunk_size: 256       # Thai tokens (not characters)
+  chunk_overlap: 30
+  use_token_count: true # Count tokens instead of chars
 ```
+
+### Pricing (DeepSeek Reasoner)
+| Type | Price |
+|------|-------|
+| Input (cache hit) | $0.028/M tokens |
+| Input (cache miss) | $0.28/M tokens |
+| Output | $0.42/M tokens |
 
 ### Prompts (config/prompts.yaml)
 
