@@ -3,10 +3,10 @@
 
 # BGE-M3 Embedding Model (Multilingual including Thai)
 embedding:
-  model_name: "BAAI/bge-m3"
-  use_fp16: true  # Use half precision for faster inference
-  batch_size: 32
-  max_length: 512
+  model_name: "google/embeddinggemma-300m"
+  use_fp16: false  # EmbeddingGemma does not support fp16, uses fp32/bfloat16
+  batch_size: 128
+  max_length: 2048  # EmbeddingGemma supports up to 2048 tokens
   normalize_embeddings: true
   device: "cuda"  # or "cpu" if GPU not available
 
@@ -14,7 +14,7 @@ embedding:
 reranker:
   model_name: "BAAI/bge-reranker-v2-m3"
   top_n: 5  # Final number of documents after reranking
-  batch_size: 32
+  batch_size: 128
   use_fp16: true
   device: "cuda"  # or "cpu"
 

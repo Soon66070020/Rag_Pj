@@ -90,11 +90,11 @@ class DocumentIndexer:
         if embedding_generator is None:
             embedding_config = settings.model_config.get('embedding', {})
             self.embedding_generator = BGEEmbeddingGenerator(
-                model_name=embedding_config.get('model_name', 'BAAI/bge-m3'),
+                model_name=embedding_config.get('model_name', 'google/embeddinggemma-300m'),
                 device=embedding_config.get('device', 'cuda'),
                 batch_size=embedding_config.get('batch_size', 32),
-                use_fp16=embedding_config.get('use_fp16', True),
-                max_length=embedding_config.get('max_length', 512)
+                use_fp16=embedding_config.get('use_fp16', False),
+                max_length=embedding_config.get('max_length', 2048)
             )
         else:
             self.embedding_generator = embedding_generator
@@ -182,7 +182,7 @@ class DocumentIndexer:
 
             # Step 4: Generate embeddings
             if show_progress:
-                logger.info(f"[4/5] Generating BGE-M3 embeddings")
+                logger.info(f"[4/5] Generating embeddings")
 
             documents = self._generate_embeddings(documents)
             logger.info(f"Generated embeddings for {len(documents)} documents")

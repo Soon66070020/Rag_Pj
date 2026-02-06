@@ -175,7 +175,8 @@ class QueryProcessor:
                 text,
                 return_dense=True,
                 return_sparse=True,
-                clean_text=False  # Already cleaned
+                clean_text=False,  # Already cleaned
+                is_query=True  # Use query prompt template for EmbeddingGemma
             )
 
             dense_vector = embedding.get('dense', [])

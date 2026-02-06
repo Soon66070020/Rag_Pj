@@ -50,7 +50,8 @@ from src.knowledge_base.metadata_extractor import (
 )
 
 from src.knowledge_base.embedding_generator import (
-    BGEEmbeddingGenerator,
+    GemmaEmbeddingGenerator,
+    BGEEmbeddingGenerator,  # backward-compat alias
     create_embedding_generator,
     encode_documents
 )
@@ -82,6 +83,7 @@ __all__ = [
     'batch_extract_metadata',
 
     # Embeddings
+    'GemmaEmbeddingGenerator',
     'BGEEmbeddingGenerator',
     'create_embedding_generator',
     'encode_documents',

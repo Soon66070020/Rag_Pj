@@ -21,7 +21,6 @@ pdfplumber==0.11.4
 numpy<2  # Required: NumPy 2.x has compatibility issues
 torch==2.3.1
 sentence-transformers==3.0.1
-FlagEmbedding==1.2.11
 
 # Development Tools
 pytest==8.3.3
