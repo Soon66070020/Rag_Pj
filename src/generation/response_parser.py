@@ -120,6 +120,9 @@ class ResponseParser:
         # answer_text = self._remove_citations(llm_response)
         answer_text = llm_response  # Keep citations in answer
 
+        # Get HyDE expansion from query
+        hyde_expansion = retrieval_result.query.hyde_expansion if retrieval_result.query else ""
+
         # Create GeneratedResponse
         response = GeneratedResponse(
             query_text=query_text,
@@ -127,7 +130,8 @@ class ResponseParser:
             citations=citations,
             context_used=context_docs,
             generation_time_ms=generation_time_ms,
-            model_name=model_name
+            model_name=model_name,
+            hyde_expansion=hyde_expansion
         )
 
         logger.info(

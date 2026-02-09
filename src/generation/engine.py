@@ -346,13 +346,17 @@ class GenerationEngine:
         if retrieval_result.reranked_results:
             context_docs = [r.document for r in retrieval_result.reranked_results]
 
+        # Get HyDE expansion if available
+        hyde_expansion = retrieval_result.query.hyde_expansion if retrieval_result.query else ""
+
         response = GeneratedResponse(
             query_text=query_text,
             answer=self.fallback_message,
             citations=[],
             context_used=context_docs,
             generation_time_ms=elapsed_time * 1000,
-            model_name=self.llm_client.model_name
+            model_name=self.llm_client.model_name,
+            hyde_expansion=hyde_expansion
         )
 
         if error:

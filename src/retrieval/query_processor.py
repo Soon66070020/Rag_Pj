@@ -2,6 +2,7 @@
 
 This module handles query preprocessing including:
 - Thai text normalization
+- HyDE (Hypothetical Document Embeddings) query expansion
 - Query embedding generation (BGE-M3)
 - Category inference from Thai keywords
 
@@ -9,7 +10,7 @@ Optimized for low latency while maintaining high quality embeddings.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 from src.core.types import Query
@@ -28,12 +29,14 @@ logger = logging.getLogger(__name__)
 class QueryProcessor:
     """Process user queries for retrieval pipeline.
 
-    Handles Thai text normalization, embedding generation, and
-    category inference to prepare queries for hybrid search.
+    Handles Thai text normalization, HyDE expansion, embedding generation,
+    and category inference to prepare queries for hybrid search.
 
     Attributes:
         embedding_generator: BGE-M3 embedding generator.
         auto_infer_category: Whether to automatically infer category.
+        hyde_client: DeepSeek client for HyDE expansion (optional).
+        hyde_prompt_template: Prompt template for HyDE generation.
 
     Example:
         >>> processor = QueryProcessor()
@@ -45,15 +48,21 @@ class QueryProcessor:
     def __init__(
         self,
         embedding_generator: Optional[BGEEmbeddingGenerator] = None,
-        auto_infer_category: bool = True
+        auto_infer_category: bool = True,
+        hyde_client=None,
+        hyde_prompt_template: Optional[str] = None
     ):
         """Initialize query processor.
 
         Args:
             embedding_generator: BGE-M3 generator. Creates new if None.
             auto_infer_category: Whether to infer category from keywords.
+            hyde_client: DeepSeekClient for HyDE expansion. None to disable.
+            hyde_prompt_template: Prompt template for HyDE generation.
         """
         self.auto_infer_category = auto_infer_category
+        self.hyde_client = hyde_client
+        self.hyde_prompt_template = hyde_prompt_template
 
         # Initialize embedding generator
         if embedding_generator is None:
@@ -64,6 +73,9 @@ class QueryProcessor:
         else:
             self.embedding_generator = embedding_generator
 
+        if self.hyde_client:
+            logger.info("HyDE expansion enabled (deepseek-chat)")
+
         logger.info("QueryProcessor initialized")
 
     def process(self, query_text: str) -> Query:
@@ -71,8 +83,8 @@ class QueryProcessor:
 
         Complete processing pipeline:
         1. Normalize Thai text
-        2. Clean for embedding
-        3. Generate embeddings (dense + sparse)
+        2. HyDE expansion (if enabled) — generate pseudo-document via deepseek-chat
+        3. Generate embeddings from expanded text (dense + sparse)
         4. Infer category from Thai keywords
 
         Args:
@@ -96,18 +108,30 @@ class QueryProcessor:
             # Step 1: Normalize Thai text
             processed_text = self._normalize_query(query_text)
 
-            # Step 2: Infer category (fast, keyword-based)
+            # Step 2: HyDE expansion (if enabled)
+            hyde_expansion = ""
+            if self.hyde_client and self.hyde_prompt_template:
+                hyde_expansion = self._generate_hyde_expansion(processed_text)
+
+            # Step 3: Prepare text for embedding (original + HyDE expansion)
+            if hyde_expansion:
+                embedding_text = f"{processed_text} {hyde_expansion}"
+            else:
+                embedding_text = processed_text
+
+            # Step 4: Infer category (fast, keyword-based) — use original text
             category = None
             if self.auto_infer_category:
                 category = self._infer_category(processed_text)
 
-            # Step 3: Generate embeddings
-            dense_vector, sparse_vector = self._generate_embeddings(processed_text)
+            # Step 5: Generate embeddings from expanded text
+            dense_vector, sparse_vector = self._generate_embeddings(embedding_text)
 
             # Create Query object
             query = Query(
                 original_text=query_text,
                 processed_text=processed_text,
+                hyde_expansion=hyde_expansion,
                 inferred_category=category,
                 dense_vector=dense_vector,
                 sparse_vector=sparse_vector,
@@ -116,7 +140,7 @@ class QueryProcessor:
 
             logger.debug(
                 f"Processed query: '{query_text[:50]}...' "
-                f"(category: {category})"
+                f"(category: {category}, hyde: {len(hyde_expansion)} chars)"
             )
 
             return query
@@ -125,6 +149,31 @@ class QueryProcessor:
             error_msg = f"Failed to process query: {e}"
             logger.error(error_msg)
             raise QueryProcessingError(error_msg) from e
+
+    def _generate_hyde_expansion(self, query_text: str) -> str:
+        """Generate hypothetical document via DeepSeek chat for query expansion.
+
+        Args:
+            query_text: Normalized query text.
+
+        Returns:
+            Generated pseudo-document text, or empty string on failure.
+        """
+        try:
+            prompt = self.hyde_prompt_template.format(query=query_text)
+            messages = [
+                {"role": "user", "content": prompt}
+            ]
+
+            response = self.hyde_client.generate(messages=messages)
+            hyde_text = response["content"].strip()
+
+            logger.info(f"HyDE expansion generated: {len(hyde_text)} chars")
+            return hyde_text
+
+        except Exception as e:
+            logger.warning(f"HyDE expansion failed, using original query: {e}")
+            return ""
 
     def _normalize_query(self, text: str) -> str:
         """Normalize Thai query text.

@@ -82,10 +82,38 @@ class RetrievalService:
         else:
             self.db_manager = db_manager
 
+        # Initialize HyDE client if enabled
+        hyde_client = None
+        hyde_prompt_template = None
+        use_hyde = retrieval_config.get('use_hyde', False)
+
+        if use_hyde:
+            logger.info("Initializing HyDE expansion (deepseek-chat)...")
+            hyde_config = settings.model_config.get('hyde', {})
+            prompts = settings.prompts or {}
+            hyde_prompt_template = prompts.get('hyde_prompt_template')
+
+            if settings.deepseek_api_key and hyde_prompt_template:
+                from src.generation.client import DeepSeekClient
+                hyde_client = DeepSeekClient(
+                    api_key=settings.deepseek_api_key,
+                    model_name=hyde_config.get('model_name', 'deepseek-chat'),
+                    api_base=settings.deepseek_api_base,
+                    temperature=hyde_config.get('temperature', 0.3),
+                    max_tokens=hyde_config.get('max_tokens', 4096)
+                )
+                logger.info("HyDE client ready (deepseek-chat)")
+            else:
+                logger.warning(
+                    "HyDE enabled but missing API key or prompt template, skipping"
+                )
+
         # Initialize query processor (with shared embedding generator)
         logger.info("Loading query processor...")
         self.query_processor = QueryProcessor(
-            auto_infer_category=use_category_filter
+            auto_infer_category=use_category_filter,
+            hyde_client=hyde_client,
+            hyde_prompt_template=hyde_prompt_template
         )
 
         # Initialize hybrid searcher

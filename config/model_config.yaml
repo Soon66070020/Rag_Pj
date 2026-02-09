@@ -28,6 +28,13 @@ llm:
   timeout: 120  # Increased timeout for reasoning model
   stream: false
 
+# HyDE (Hypothetical Document Embeddings) Configuration
+# Uses deepseek-chat for fast query expansion before retrieval
+hyde:
+  model_name: "deepseek-chat"
+  temperature: 0.3
+  max_tokens: 4096
+
 # Retrieval Pipeline Parameters
 retrieval:
   alpha: 0.7  # Hybrid search blending (0.0=sparse only, 1.0=dense only)

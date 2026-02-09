@@ -102,6 +102,7 @@ class GeneratedResponse:
         context_used: Documents used for generation.
         generation_time_ms: Time taken to generate in milliseconds.
         model_name: LLM model used.
+        hyde_expansion: HyDE query expansion text (empty if disabled).
     """
     query_text: str
     answer: str
@@ -109,3 +110,4 @@ class GeneratedResponse:
     context_used: List[Document]
     generation_time_ms: float = 0.0
     model_name: str = "deepseek-chat"
+    hyde_expansion: str = ""
