@@ -247,7 +247,7 @@ class GenerationEngine:
             response = self.llm_client.generate(
                 messages=messages,
                 temperature=hyde_temperature,
-                max_tokens=256  # Short hypothetical answer
+                max_tokens=6000
             )
 
             hyde_text = response["content"].strip()

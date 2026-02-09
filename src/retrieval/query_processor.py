@@ -2,6 +2,7 @@
 
 This module handles query preprocessing including:
 - Thai text normalization
+- HyDE (Hypothetical Document Embeddings) query expansion
 - Query embedding generation (BGE-M3)
 - Category inference from Thai keywords
 
@@ -28,12 +29,14 @@ logger = logging.getLogger(__name__)
 class QueryProcessor:
     """Process user queries for retrieval pipeline.
 
-    Handles Thai text normalization, embedding generation, and
-    category inference to prepare queries for hybrid search.
+    Handles Thai text normalization, HyDE expansion, embedding generation,
+    and category inference to prepare queries for hybrid search.
 
     Attributes:
         embedding_generator: BGE-M3 embedding generator.
         auto_infer_category: Whether to automatically infer category.
+        hyde_client: Optional DeepSeek client for HyDE generation.
+        prompt_builder: Optional prompt builder for HyDE prompts.
 
     Example:
         >>> processor = QueryProcessor()
@@ -45,15 +48,21 @@ class QueryProcessor:
     def __init__(
         self,
         embedding_generator: Optional[BGEEmbeddingGenerator] = None,
-        auto_infer_category: bool = True
+        auto_infer_category: bool = True,
+        hyde_client=None,
+        prompt_builder=None
     ):
         """Initialize query processor.
 
         Args:
             embedding_generator: BGE-M3 generator. Creates new if None.
             auto_infer_category: Whether to infer category from keywords.
+            hyde_client: DeepSeek client for HyDE generation. None to disable HyDE.
+            prompt_builder: PromptBuilder for building HyDE prompts.
         """
         self.auto_infer_category = auto_infer_category
+        self.hyde_client = hyde_client
+        self.prompt_builder = prompt_builder
 
         # Initialize embedding generator
         if embedding_generator is None:
@@ -64,7 +73,7 @@ class QueryProcessor:
         else:
             self.embedding_generator = embedding_generator
 
-        logger.info("QueryProcessor initialized")
+        logger.info(f"QueryProcessor initialized (HyDE: {'enabled' if hyde_client else 'disabled'})")
 
     def process(self, query_text: str) -> Query:
         """Process a user query.
@@ -101,13 +110,23 @@ class QueryProcessor:
             if self.auto_infer_category:
                 category = self._infer_category(processed_text)
 
-            # Step 3: Generate embeddings
-            dense_vector, sparse_vector = self._generate_embeddings(processed_text)
+            # Step 3: HyDE - Generate hypothetical document
+            hyde_expansion = ""
+            embedding_text = processed_text  # Default: embed original query
+            if self.hyde_client and self.prompt_builder:
+                hyde_expansion = self._generate_hyde(processed_text)
+                if hyde_expansion and hyde_expansion != processed_text:
+                    embedding_text = hyde_expansion  # Embed HyDE doc instead
+                    logger.info(f"Using HyDE expansion for embedding ({len(hyde_expansion)} chars)")
+
+            # Step 4: Generate embeddings (from HyDE doc or original query)
+            dense_vector, sparse_vector = self._generate_embeddings(embedding_text)
 
             # Create Query object
             query = Query(
                 original_text=query_text,
                 processed_text=processed_text,
+                hyde_expansion=hyde_expansion,
                 inferred_category=category,
                 dense_vector=dense_vector,
                 sparse_vector=sparse_vector,
@@ -116,7 +135,7 @@ class QueryProcessor:
 
             logger.debug(
                 f"Processed query: '{query_text[:50]}...' "
-                f"(category: {category})"
+                f"(category: {category}, hyde: {'yes' if hyde_expansion else 'no'})"
             )
 
             return query
@@ -159,6 +178,26 @@ class QueryProcessor:
         except Exception as e:
             logger.warning(f"Category inference failed: {e}")
             return None
+
+    def _generate_hyde(self, query_text: str) -> str:
+        """Generate hypothetical document using HyDE.
+
+        Args:
+            query_text: Normalized query text.
+
+        Returns:
+            Hypothetical document text, or original query on failure.
+        """
+        try:
+            logger.info(f"Generating HyDE for: '{query_text[:50]}...'")
+            messages = self.prompt_builder.build_hyde_prompt(query_text)
+            response = self.hyde_client.generate(messages=messages)
+            hyde_text = response["content"].strip()
+            logger.info(f"HyDE generated: {len(hyde_text)} chars")
+            return hyde_text
+        except Exception as e:
+            logger.warning(f"HyDE generation failed, using original query: {e}")
+            return query_text
 
     def _generate_embeddings(self, text: str) -> tuple:
         """Generate query embeddings.

@@ -34,8 +34,15 @@ retrieval:
   top_k: 20  # Initial candidates from hybrid search
   top_n: 5   # Final results after reranking
   use_hyde: true  # Enable HyDE query expansion
-  hyde_temperature: 0.3  # Temperature for HyDE generation
   enable_metadata_filter: true  # Enable category-based filtering
+
+# HyDE (Hypothetical Document Embeddings) LLM Configuration
+hyde:
+  model_name: "deepseek-chat"
+  api_base: "https://api.deepseek.com"
+  temperature: 0.3
+  max_tokens: 6000
+  timeout: 120
 
 # Chunking Strategy for Document Processing
 chunking:

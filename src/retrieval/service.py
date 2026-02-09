@@ -17,6 +17,8 @@ from src.retrieval.query_processor import QueryProcessor
 from src.retrieval.hybrid_search import HybridSearcher
 from src.retrieval.reranker import BGEReranker
 from src.database.manager import WeaviateManager
+from src.generation.client import DeepSeekClient
+from src.generation.prompt_builder import PromptBuilder
 from config.settings import Settings
 
 
@@ -82,10 +84,29 @@ class RetrievalService:
         else:
             self.db_manager = db_manager
 
-        # Initialize query processor (with shared embedding generator)
+        # Initialize HyDE client (deepseek-chat for hypothetical document generation)
+        hyde_client = None
+        prompt_builder = None
+        hyde_config = settings.model_config.get('hyde', {})
+        if retrieval_config.get('use_hyde', False) and hyde_config:
+            logger.info("Initializing HyDE client (deepseek-chat)...")
+            hyde_client = DeepSeekClient(
+                api_key=settings.deepseek_api_key,
+                model_name=hyde_config.get('model_name', 'deepseek-chat'),
+                api_base=hyde_config.get('api_base', 'https://api.deepseek.com'),
+                temperature=hyde_config.get('temperature', 0.3),
+                max_tokens=hyde_config.get('max_tokens', 6000),
+                timeout=hyde_config.get('timeout', 120)
+            )
+            prompt_builder = PromptBuilder(settings.prompts)
+            logger.info("HyDE client ready")
+
+        # Initialize query processor (with shared embedding generator + HyDE)
         logger.info("Loading query processor...")
         self.query_processor = QueryProcessor(
-            auto_infer_category=use_category_filter
+            auto_infer_category=use_category_filter,
+            hyde_client=hyde_client,
+            prompt_builder=prompt_builder
         )
 
         # Initialize hybrid searcher
