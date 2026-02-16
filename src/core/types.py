@@ -51,9 +51,12 @@ class Query:
     original_text: str
     processed_text: str = ""
     q2d_expansion: str = ""
+    q2d_expansions: List[str] = field(default_factory=list)
     inferred_category: Optional[str] = None
     dense_vector: Optional[List[float]] = None
     sparse_vector: Optional[Dict[str, float]] = None
+    multi_dense_vectors: Optional[List[List[float]]] = None
+    multi_sparse_vectors: Optional[List[Dict[str, float]]] = None
     timestamp: datetime = field(default_factory=datetime.now)
 
 

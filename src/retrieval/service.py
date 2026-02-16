@@ -9,9 +9,10 @@ Optimized for low latency and high relevance (Recall@K).
 
 import logging
 import time
-from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
+from typing import Optional, List, Dict
 
-from src.core.types import Query, RetrievalResult
+from src.core.types import Query, SearchResult, RetrievalResult
 from src.core.exceptions import RetrievalError
 from src.retrieval.query_processor import QueryProcessor
 from src.retrieval.hybrid_search import HybridSearcher
@@ -176,13 +177,18 @@ class RetrievalService:
                 category_filter = query.inferred_category
                 logger.debug(f"Using category filter: {category_filter}")
 
-            # Step 2: Hybrid search
-            logger.info(f"Executing hybrid search (top_k={top_k or self.top_k})...")
-            candidates = self.hybrid_searcher.search(
-                query=query,
-                top_k=top_k,
-                category_filter=category_filter
-            )
+            # Step 2: Hybrid search (multi-query or single)
+            k = top_k or self.top_k
+            if query.multi_dense_vectors and len(query.multi_dense_vectors) > 1:
+                logger.info(f"Executing multi-query search ({len(query.multi_dense_vectors)} variations)...")
+                candidates = self._multi_query_search(query, k, category_filter)
+            else:
+                logger.info(f"Executing hybrid search (top_k={k})...")
+                candidates = self.hybrid_searcher.search(
+                    query=query,
+                    top_k=k,
+                    category_filter=category_filter
+                )
 
             if not candidates:
                 logger.warning("No candidates found in hybrid search")
@@ -232,6 +238,86 @@ class RetrievalService:
             error_msg = f"Retrieval failed for query '{query_text}': {e}"
             logger.error(error_msg)
             raise RetrievalError(error_msg) from e
+
+    def _multi_query_search(
+        self,
+        query: Query,
+        top_k: int,
+        category_filter: Optional[str]
+    ) -> List[SearchResult]:
+        """Search with multiple query variations and merge via RRF.
+
+        Args:
+            query: Query with multi_dense_vectors and multi_sparse_vectors.
+            top_k: Number of candidates per variation.
+            category_filter: Optional category filter.
+
+        Returns:
+            Merged and deduplicated search results.
+        """
+        per_query_k = max(top_k // 2, 10)
+
+        def search_one(i: int) -> List[SearchResult]:
+            temp_query = Query(
+                original_text=query.original_text,
+                processed_text=query.q2d_expansions[i] if i < len(query.q2d_expansions) else query.processed_text,
+                dense_vector=query.multi_dense_vectors[i],
+                sparse_vector=query.multi_sparse_vectors[i],
+            )
+            return self.hybrid_searcher.search(
+                temp_query, top_k=per_query_k, category_filter=category_filter
+            )
+
+        num_variations = len(query.multi_dense_vectors)
+        with ThreadPoolExecutor(max_workers=num_variations) as executor:
+            futures = [executor.submit(search_one, i) for i in range(num_variations)]
+            all_result_lists = [f.result() for f in futures]
+
+        merged = self._rrf_merge(all_result_lists)
+
+        total_raw = sum(len(r) for r in all_result_lists)
+        logger.info(
+            f"Multi-query search: {num_variations} variations, "
+            f"{total_raw} raw -> {len(merged)} unique candidates"
+        )
+
+        return merged
+
+    @staticmethod
+    def _rrf_merge(
+        result_lists: List[List[SearchResult]],
+        k: int = 60
+    ) -> List[SearchResult]:
+        """Reciprocal Rank Fusion for combining multiple ranked lists.
+
+        RRF_score(doc) = sum(1 / (k + rank_i)) for each list containing doc.
+
+        Args:
+            result_lists: List of ranked SearchResult lists.
+            k: RRF constant (default 60).
+
+        Returns:
+            Merged results sorted by RRF score.
+        """
+        scores: Dict[str, float] = {}
+        docs: Dict[str, SearchResult] = {}
+
+        for results in result_lists:
+            for rank, result in enumerate(results, start=1):
+                doc_id = result.document.id
+                rrf_score = 1.0 / (k + rank)
+                scores[doc_id] = scores.get(doc_id, 0.0) + rrf_score
+                if doc_id not in docs:
+                    docs[doc_id] = result
+
+        sorted_ids = sorted(scores.keys(), key=lambda d: scores[d], reverse=True)
+        output = []
+        for new_rank, doc_id in enumerate(sorted_ids, start=1):
+            result = docs[doc_id]
+            result.score = scores[doc_id]
+            result.rank = new_rank
+            output.append(result)
+        return output
 
     def retrieve_by_category(
         self,

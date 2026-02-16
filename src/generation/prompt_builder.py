@@ -9,6 +9,7 @@ All prompts enforce citation requirements for medical accuracy.
 """
 
 import logging
+import re
 from typing import List, Dict, Any, Optional
 
 from src.core.types import RetrievalResult, SearchResult, Document
@@ -46,6 +47,7 @@ class PromptBuilder:
             prompts_config: Prompts configuration from prompts.yaml.
             max_context_length: Maximum characters for context section.
         """
+        self.prompts_config = prompts_config
         self.system_prompt = prompts_config.get('system_prompt', '')
         self.empty_context_prompt = prompts_config.get('empty_context_prompt', '')
         self.citation_instruction = prompts_config.get('citation_format_instruction', '')
@@ -207,41 +209,75 @@ ANSWER (in Thai with citations):"""
         query: str,
         q2d_template: Optional[str] = None
     ) -> List[Dict[str, str]]:
-        """Build prompt for Q2D (Query to Document) query expansion.
+        """Build prompt for Multi-Query Q2D expansion.
 
-        Used to expand query with related medical terms for better retrieval.
+        Generates 3 declarative statement variations from a question.
+        Uses restrictive system message to prevent 'doctor role' behavior.
 
         Args:
             query: User query.
-            q2d_template: Q2D prompt template. Uses default if None.
+            q2d_template: Q2D prompt template. Uses config or default if None.
 
         Returns:
             Message list for Q2D generation.
-
-        Example:
-            >>> messages = builder.build_q2d_prompt("ฉันควรกินอาหารอะไร")
-            >>> # Use with LLM to expand query with related terms
         """
         if q2d_template is None:
+            q2d_template = self.prompts_config.get('q2d_prompt_template', None)
+
+        if q2d_template is None:
             q2d_template = (
-                'จงเปลี่ยนคำถามนี้เป็นประโยคบอกเล่า (declarative statement) พร้อมตัวอย่างหรือรายละเอียดเพิ่มเติม\n'
-                'เขียนเป็นภาษาไทย 1-2 ประโยคเท่านั้น\n'
-                'ห้ามเพิ่มเนื้อหาที่ไม่เกี่ยวข้องกับคำถาม\n\n'
+                'จากคำถามที่ให้มา ให้สร้างประโยคบอกเล่า 3 แบบที่แตกต่างกัน\n'
+                'แต่ละแบบควรเน้นมุมมองหรือคำสำคัญที่ต่างกัน\n'
+                'เขียนเป็นภาษาไทย แต่ละข้อ 1-2 ประโยค\n'
+                'ห้ามเพิ่มเนื้อหาที่ไม่เกี่ยวข้องกับคำถาม\n'
+                'ห้ามให้คำแนะนำหรือความเห็นทางการแพทย์\n\n'
                 'ตัวอย่าง:\n'
-                'คำถาม: "หลังผ่าตัดควรกินอาหารอะไร"\n'
-                'ประโยคบอกเล่า: "หลังผ่าตัดอาหารที่ควรกิน เช่น ข้าวต้ม โจ๊ก น้ำซุป"\n\n'
-                'คำถาม: "{query}"\n'
-                'ประโยคบอกเล่า:'
+                'คำถาม: "หลังผ่าตัดกินอะไรได้บ้าง"\n'
+                '1. อาหารที่สามารถรับประทานได้หลังผ่าตัดในช่องปาก\n'
+                '2. ชนิดของอาหารที่เหมาะสมสำหรับผู้ป่วยหลังการผ่าตัดฟัน\n'
+                '3. รายการอาหารอ่อนที่รับประทานได้หลังผ่าตัดฟันคุด\n\n'
+                'คำถาม: "{query}"'
             )
 
         prompt = q2d_template.format(query=query)
 
         messages = [
-            {"role": "system", "content": "You are a helpful assistant that rewrites questions into declarative statements in Thai."},
+            {
+                "role": "system",
+                "content": (
+                    "คุณเป็นผู้ช่วยแปลงรูปแบบประโยคเท่านั้น "
+                    "ห้ามสวมบทบาทเป็นแพทย์ ห้ามให้คำแนะนำทางการแพทย์ "
+                    "ห้ามเพิ่มข้อมูลที่ไม่ได้อยู่ในคำถาม "
+                    "แค่เปลี่ยนคำถามเป็นประโยคบอกเล่าที่หลากหลาย"
+                )
+            },
             {"role": "user", "content": prompt}
         ]
 
         return messages
+
+    @staticmethod
+    def parse_multi_q2d_response(raw_text: str) -> List[str]:
+        """Parse numbered list from LLM response into list of expansions.
+
+        Handles formats like '1. statement', '1) statement', '- statement'.
+
+        Args:
+            raw_text: Raw LLM output text.
+
+        Returns:
+            List of parsed expansion strings (up to 3).
+        """
+        lines = raw_text.strip().split('\n')
+        expansions = []
+        for line in lines:
+            cleaned = re.sub(r'^\s*[\d]+[\.\)]\s*', '', line).strip()
+            cleaned = re.sub(r'^\s*[-\*]\s*', '', cleaned).strip()
+            if cleaned and len(cleaned) > 5:
+                expansions.append(cleaned)
+        while len(expansions) > 3:
+            expansions.pop()
+        return expansions
 
     def extract_context_sources(
         self,
