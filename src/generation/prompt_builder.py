@@ -224,19 +224,20 @@ ANSWER (in Thai with citations):"""
         """
         if q2d_template is None:
             q2d_template = (
-                'Given this question from a post-oral surgery patient:\n'
-                '"{query}"\n\n'
-                'Rewrite this question as a declarative statement (ประโยคบอกเล่า) with specific examples or details.\n'
-                'Keep it in Thai, 1-2 sentences only.\n\n'
-                'Example:\n'
-                'Question: "หลังผ่าตัดควรกินอาหารอะไร"\n'
-                'Answer: "หลังผ่าตัดอาหารที่ควรกิน เช่น ข้าวต้ม โจ๊ก น้ำซุป"'
+                'จงเปลี่ยนคำถามนี้เป็นประโยคบอกเล่า (declarative statement) พร้อมตัวอย่างหรือรายละเอียดเพิ่มเติม\n'
+                'เขียนเป็นภาษาไทย 1-2 ประโยคเท่านั้น\n'
+                'ห้ามเพิ่มเนื้อหาที่ไม่เกี่ยวข้องกับคำถาม\n\n'
+                'ตัวอย่าง:\n'
+                'คำถาม: "หลังผ่าตัดควรกินอาหารอะไร"\n'
+                'ประโยคบอกเล่า: "หลังผ่าตัดอาหารที่ควรกิน เช่น ข้าวต้ม โจ๊ก น้ำซุป"\n\n'
+                'คำถาม: "{query}"\n'
+                'ประโยคบอกเล่า:'
             )
 
         prompt = q2d_template.format(query=query)
 
         messages = [
-            {"role": "system", "content": "You are a Thai medical professional."},
+            {"role": "system", "content": "You are a helpful assistant that rewrites questions into declarative statements in Thai."},
             {"role": "user", "content": prompt}
         ]
 
