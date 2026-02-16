@@ -202,36 +202,38 @@ ANSWER (in Thai with citations):"""
 
         return messages
 
-    def build_hyde_prompt(
+    def build_q2d_prompt(
         self,
         query: str,
-        hyde_template: Optional[str] = None
+        q2d_template: Optional[str] = None
     ) -> List[Dict[str, str]]:
-        """Build prompt for HyDE (Hypothetical Document Embeddings).
+        """Build prompt for Q2D (Query to Document) query expansion.
 
-        Used to generate hypothetical answers for query expansion.
+        Used to expand query with related medical terms for better retrieval.
 
         Args:
             query: User query.
-            hyde_template: HyDE prompt template. Uses default if None.
+            q2d_template: Q2D prompt template. Uses default if None.
 
         Returns:
-            Message list for HyDE generation.
+            Message list for Q2D generation.
 
         Example:
-            >>> messages = builder.build_hyde_prompt("ฉันควรกินอาหารอะไร")
-            >>> # Use with LLM to generate hypothetical answer
+            >>> messages = builder.build_q2d_prompt("ฉันควรกินอาหารอะไร")
+            >>> # Use with LLM to expand query with related terms
         """
-        if hyde_template is None:
-            hyde_template = (
+        if q2d_template is None:
+            q2d_template = (
                 'Given this question from a post-oral surgery patient:\n'
                 '"{query}"\n\n'
-                'Generate a hypothetical detailed answer (2-3 sentences) that a Thai '
-                'medical professional might provide.\n'
-                'Answer in Thai language with polite tone (ครับ/ค่ะ).'
+                'Rewrite this question as a declarative statement (ประโยคบอกเล่า) with specific examples or details.\n'
+                'Keep it in Thai, 1-2 sentences only.\n\n'
+                'Example:\n'
+                'Question: "หลังผ่าตัดควรกินอาหารอะไร"\n'
+                'Answer: "หลังผ่าตัดอาหารที่ควรกิน เช่น ข้าวต้ม โจ๊ก น้ำซุป"'
             )
 
-        prompt = hyde_template.format(query=query)
+        prompt = q2d_template.format(query=query)
 
         messages = [
             {"role": "system", "content": "You are a Thai medical professional."},
@@ -319,19 +321,26 @@ ANSWER (in Thai with citations):"""
         Returns:
             Default Thai medical assistant system prompt.
         """
-        return """You are an expert dental assistant AI specializing in post-oral surgery care.
+        return """คุณเป็นพยาบาลหญิงที่ใจดี เชี่ยวชาญด้านการดูแลหลังผ่าตัดในช่องปาก
+คุณอธิบายเรื่องยากๆ ให้คนทั่วไปเข้าใจง่ายเหมือนอธิบายให้เด็ก ป.3 ฟัง
+ใช้ภาษาสั้น กระชับ ตรงประเด็น ไม่ใช้ศัพท์แพทย์ที่ยากเกินไป
 
-Your task is to answer patient questions based ONLY on the provided context.
+ตอบคำถามจากข้อมูลที่ให้มาเท่านั้น ห้ามแต่งเอง
+ถ้าไม่มีข้อมูลเพียงพอ ให้ตอบว่า "ขออภัยค่ะ ไม่มีข้อมูลเพียงพอ กรุณาปรึกษาทันตแพทย์โดยตรงนะคะ"
+ถ้าเป็นอาการฉุกเฉิน (เลือดออกมาก ไข้สูง ปวดรุนแรง) ให้แนะนำพบแพทย์ทันที
 
-CRITICAL RULES:
-1. **Answer in Thai language** using a polite and professional tone (ครับ/ค่ะ).
-2. **Do NOT use outside knowledge**. If the answer is not in the context, say "ขออภัยครับ/ค่ะ ไม่มีข้อมูลเพียงพอในระบบ"
-3. **MANDATORY CITATION**: Every factual statement MUST include a citation in this format: [Source: filename, Page: number]
-4. If information comes from multiple sources, cite all.
-5. Be specific and actionable. Focus on practical advice.
-6. If emergency symptoms are mentioned, advise immediate medical consultation: "กรุณาพบทันตแพทย์โดยด่วน"
+รูปแบบการตอบ (ต้องตอบตามรูปแบบนี้เสมอ):
+---
+จากคำถามที่ถามเข้ามา ขอตอบว่า [ได้/ไม่ได้/ควร/ไม่ควร] เพราะ [เหตุผลสั้นๆ]
 
-Remember: Citations are MANDATORY. Do not skip them."""
+คำแนะนำ:
+- [คำแนะนำข้อ 1]
+- [คำแนะนำข้อ 2]
+- ...
+
+เอกสารอ้างอิง:
+- [Source: filename, Page: number]
+---"""
 
 
 def create_prompt_builder(prompts_config: Dict[str, Any]) -> PromptBuilder:

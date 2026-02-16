@@ -33,11 +33,11 @@ retrieval:
   alpha: 0.7  # Hybrid search blending (0.0=sparse only, 1.0=dense only)
   top_k: 20  # Initial candidates from hybrid search
   top_n: 5   # Final results after reranking
-  use_hyde: true  # Enable HyDE query expansion
+  use_q2d: true  # Enable Q2D query expansion
   enable_metadata_filter: true  # Enable category-based filtering
 
-# HyDE (Hypothetical Document Embeddings) LLM Configuration
-hyde:
+# Q2D (Query to Document - Query Expansion) LLM Configuration
+q2d:
   model_name: "deepseek-chat"
   api_base: "https://api.deepseek.com"
   temperature: 0.3

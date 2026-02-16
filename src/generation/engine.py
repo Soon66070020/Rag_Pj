@@ -219,44 +219,44 @@ class GenerationEngine:
                 error=str(e)
             )
 
-    def generate_with_hyde(
+    def generate_with_q2d(
         self,
         query: str,
-        hyde_temperature: float = 0.3
+        q2d_temperature: float = 0.3
     ) -> str:
-        """Generate hypothetical document for HyDE query expansion.
+        """Generate expanded query using Q2D (Query to Document).
 
         Args:
             query: User query.
-            hyde_temperature: Temperature for hypothetical generation.
+            q2d_temperature: Temperature for query expansion.
 
         Returns:
-            Hypothetical document text in Thai.
+            Expanded query with related terms in Thai.
 
         Example:
-            >>> hyde_doc = engine.generate_with_hyde("ฉันควรกินอาหารอะไร")
-            >>> # Use hyde_doc for query expansion before retrieval
+            >>> expanded = engine.generate_with_q2d("ฉันควรกินอาหารอะไร")
+            >>> # Use expanded query for retrieval
         """
-        logger.info(f"Generating HyDE for query: '{query[:50]}...'")
+        logger.info(f"Generating Q2D for query: '{query[:50]}...'")
 
         try:
-            # Build HyDE prompt
-            messages = self.prompt_builder.build_hyde_prompt(query)
+            # Build Q2D prompt
+            messages = self.prompt_builder.build_q2d_prompt(query)
 
-            # Generate hypothetical answer
+            # Generate expanded query
             response = self.llm_client.generate(
                 messages=messages,
-                temperature=hyde_temperature,
+                temperature=q2d_temperature,
                 max_tokens=6000
             )
 
-            hyde_text = response["content"].strip()
-            logger.info(f"HyDE generated: {len(hyde_text)} chars")
+            q2d_text = response["content"].strip()
+            logger.info(f"Q2D generated: {len(q2d_text)} chars")
 
-            return hyde_text
+            return q2d_text
 
         except Exception as e:
-            logger.error(f"HyDE generation failed: {e}")
+            logger.error(f"Q2D generation failed: {e}")
             # Return original query as fallback
             return query
 

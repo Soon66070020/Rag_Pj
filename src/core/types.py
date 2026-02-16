@@ -42,7 +42,7 @@ class Query:
     Attributes:
         original_text: Raw user input (Thai or mixed Thai-English).
         processed_text: Cleaned and normalized text.
-        hyde_expansion: HyDE-generated hypothetical document.
+        q2d_expansion: Q2D-expanded query with related terms.
         inferred_category: Predicted category for filtering.
         dense_vector: Dense embedding of query.
         sparse_vector: Sparse representation of query.
@@ -50,7 +50,7 @@ class Query:
     """
     original_text: str
     processed_text: str = ""
-    hyde_expansion: str = ""
+    q2d_expansion: str = ""
     inferred_category: Optional[str] = None
     dense_vector: Optional[List[float]] = None
     sparse_vector: Optional[Dict[str, float]] = None

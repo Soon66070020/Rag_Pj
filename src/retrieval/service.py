@@ -84,28 +84,28 @@ class RetrievalService:
         else:
             self.db_manager = db_manager
 
-        # Initialize HyDE client (deepseek-chat for hypothetical document generation)
-        hyde_client = None
+        # Initialize Q2D client (deepseek-chat for query expansion)
+        q2d_client = None
         prompt_builder = None
-        hyde_config = settings.model_config.get('hyde', {})
-        if retrieval_config.get('use_hyde', False) and hyde_config:
-            logger.info("Initializing HyDE client (deepseek-chat)...")
-            hyde_client = DeepSeekClient(
+        q2d_config = settings.model_config.get('q2d', {})
+        if retrieval_config.get('use_q2d', False) and q2d_config:
+            logger.info("Initializing Q2D client (deepseek-chat)...")
+            q2d_client = DeepSeekClient(
                 api_key=settings.deepseek_api_key,
-                model_name=hyde_config.get('model_name', 'deepseek-chat'),
-                api_base=hyde_config.get('api_base', 'https://api.deepseek.com'),
-                temperature=hyde_config.get('temperature', 0.3),
-                max_tokens=hyde_config.get('max_tokens', 6000),
-                timeout=hyde_config.get('timeout', 120)
+                model_name=q2d_config.get('model_name', 'deepseek-chat'),
+                api_base=q2d_config.get('api_base', 'https://api.deepseek.com'),
+                temperature=q2d_config.get('temperature', 0.3),
+                max_tokens=q2d_config.get('max_tokens', 6000),
+                timeout=q2d_config.get('timeout', 120)
             )
             prompt_builder = PromptBuilder(settings.prompts)
-            logger.info("HyDE client ready")
+            logger.info("Q2D client ready")
 
-        # Initialize query processor (with shared embedding generator + HyDE)
+        # Initialize query processor (with shared embedding generator + Q2D)
         logger.info("Loading query processor...")
         self.query_processor = QueryProcessor(
             auto_infer_category=use_category_filter,
-            hyde_client=hyde_client,
+            q2d_client=q2d_client,
             prompt_builder=prompt_builder
         )
 

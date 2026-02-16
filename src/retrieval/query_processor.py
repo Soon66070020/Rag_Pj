@@ -2,7 +2,7 @@
 
 This module handles query preprocessing including:
 - Thai text normalization
-- HyDE (Hypothetical Document Embeddings) query expansion
+- Q2D (Query to Document) query expansion with related terms
 - Query embedding generation (BGE-M3)
 - Category inference from Thai keywords
 
@@ -29,14 +29,14 @@ logger = logging.getLogger(__name__)
 class QueryProcessor:
     """Process user queries for retrieval pipeline.
 
-    Handles Thai text normalization, HyDE expansion, embedding generation,
+    Handles Thai text normalization, Q2D expansion, embedding generation,
     and category inference to prepare queries for hybrid search.
 
     Attributes:
         embedding_generator: BGE-M3 embedding generator.
         auto_infer_category: Whether to automatically infer category.
-        hyde_client: Optional DeepSeek client for HyDE generation.
-        prompt_builder: Optional prompt builder for HyDE prompts.
+        q2d_client: Optional DeepSeek client for Q2D generation.
+        prompt_builder: Optional prompt builder for Q2D prompts.
 
     Example:
         >>> processor = QueryProcessor()
@@ -49,7 +49,7 @@ class QueryProcessor:
         self,
         embedding_generator: Optional[BGEEmbeddingGenerator] = None,
         auto_infer_category: bool = True,
-        hyde_client=None,
+        q2d_client=None,
         prompt_builder=None
     ):
         """Initialize query processor.
@@ -57,11 +57,11 @@ class QueryProcessor:
         Args:
             embedding_generator: BGE-M3 generator. Creates new if None.
             auto_infer_category: Whether to infer category from keywords.
-            hyde_client: DeepSeek client for HyDE generation. None to disable HyDE.
-            prompt_builder: PromptBuilder for building HyDE prompts.
+            q2d_client: DeepSeek client for Q2D generation. None to disable Q2D.
+            prompt_builder: PromptBuilder for building Q2D prompts.
         """
         self.auto_infer_category = auto_infer_category
-        self.hyde_client = hyde_client
+        self.q2d_client = q2d_client
         self.prompt_builder = prompt_builder
 
         # Initialize embedding generator
@@ -73,7 +73,7 @@ class QueryProcessor:
         else:
             self.embedding_generator = embedding_generator
 
-        logger.info(f"QueryProcessor initialized (HyDE: {'enabled' if hyde_client else 'disabled'})")
+        logger.info(f"QueryProcessor initialized (Q2D: {'enabled' if q2d_client else 'disabled'})")
 
     def process(self, query_text: str) -> Query:
         """Process a user query.
@@ -110,23 +110,23 @@ class QueryProcessor:
             if self.auto_infer_category:
                 category = self._infer_category(processed_text)
 
-            # Step 3: HyDE - Generate hypothetical document
-            hyde_expansion = ""
+            # Step 3: Q2D - Expand query with related terms
+            q2d_expansion = ""
             embedding_text = processed_text  # Default: embed original query
-            if self.hyde_client and self.prompt_builder:
-                hyde_expansion = self._generate_hyde(processed_text)
-                if hyde_expansion and hyde_expansion != processed_text:
-                    embedding_text = hyde_expansion  # Embed HyDE doc instead
-                    logger.info(f"Using HyDE expansion for embedding ({len(hyde_expansion)} chars)")
+            if self.q2d_client and self.prompt_builder:
+                q2d_expansion = self._generate_q2d(processed_text)
+                if q2d_expansion and q2d_expansion != processed_text:
+                    embedding_text = q2d_expansion  # Embed expanded query instead
+                    logger.info(f"Using Q2D expansion for embedding ({len(q2d_expansion)} chars)")
 
-            # Step 4: Generate embeddings (from HyDE doc or original query)
+            # Step 4: Generate embeddings (from Q2D expansion or original query)
             dense_vector, sparse_vector = self._generate_embeddings(embedding_text)
 
             # Create Query object
             query = Query(
                 original_text=query_text,
                 processed_text=processed_text,
-                hyde_expansion=hyde_expansion,
+                q2d_expansion=q2d_expansion,
                 inferred_category=category,
                 dense_vector=dense_vector,
                 sparse_vector=sparse_vector,
@@ -135,7 +135,7 @@ class QueryProcessor:
 
             logger.debug(
                 f"Processed query: '{query_text[:50]}...' "
-                f"(category: {category}, hyde: {'yes' if hyde_expansion else 'no'})"
+                f"(category: {category}, q2d: {'yes' if q2d_expansion else 'no'})"
             )
 
             return query
@@ -179,24 +179,24 @@ class QueryProcessor:
             logger.warning(f"Category inference failed: {e}")
             return None
 
-    def _generate_hyde(self, query_text: str) -> str:
-        """Generate hypothetical document using HyDE.
+    def _generate_q2d(self, query_text: str) -> str:
+        """Generate expanded query using Q2D (Query to Document).
 
         Args:
             query_text: Normalized query text.
 
         Returns:
-            Hypothetical document text, or original query on failure.
+            Expanded query with related terms, or original query on failure.
         """
         try:
-            logger.info(f"Generating HyDE for: '{query_text[:50]}...'")
-            messages = self.prompt_builder.build_hyde_prompt(query_text)
-            response = self.hyde_client.generate(messages=messages)
-            hyde_text = response["content"].strip()
-            logger.info(f"HyDE generated: {len(hyde_text)} chars")
-            return hyde_text
+            logger.info(f"Generating Q2D for: '{query_text[:50]}...'")
+            messages = self.prompt_builder.build_q2d_prompt(query_text)
+            response = self.q2d_client.generate(messages=messages)
+            q2d_text = response["content"].strip()
+            logger.info(f"Q2D generated: {len(q2d_text)} chars")
+            return q2d_text
         except Exception as e:
-            logger.warning(f"HyDE generation failed, using original query: {e}")
+            logger.warning(f"Q2D generation failed, using original query: {e}")
             return query_text
 
     def _generate_embeddings(self, text: str) -> tuple:

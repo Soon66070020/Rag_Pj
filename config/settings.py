@@ -206,7 +206,7 @@ class Settings:
                 )
 
         # Validate prompts
-        required_prompts = ["system_prompt", "hyde_prompt_template"]
+        required_prompts = ["system_prompt", "q2d_prompt_template"]
         for prompt_key in required_prompts:
             if prompt_key not in self.prompts:
                 raise ConfigurationError(
