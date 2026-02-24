@@ -1,0 +1,173 @@
+{
+  "patient": {
+    "basic_info": {
+      "first_name": "สมชาย",
+      "last_name": "ใจดี",
+      "phone": "0812345678",
+      "birth_date": "2000-05-15",
+      "gender": "ชาย",
+      "hn": "HN12345",
+      "procedures": [
+        "ผ่าตัดขากรรไกรล่าง (BSSRO-bilateral sagittal split osteotomy)",
+        "ผ่าตัดขากรรไกรบน  (Lefort I)"
+      ],
+      "lefort_sub_options": [
+        "Advancement"
+      ],
+      "bssro_sub_options": [
+        "Setback"
+      ],
+      "surgery_date": "2026-01-09",
+      "discharge_date": "2026-01-11",
+      "note": "",
+      "imf_wire": true,
+      "imf_wire_loops": 4,
+      "imf_elastic": true,
+      "imf_elastic_loops": 6,
+      "special_icbg": false,
+      "special_icbg_description": "",
+      "special_ng_tube": false,
+      "special_ng_tube_description": ""
+    },
+    "assessment_data": {
+      "pain_score": 5,
+      "pain_score_description": "ปวดบริเวณขากรรไกรตอนเคี้ยวอาหาร",
+      "pain_medication_effect": "ดีขึ้น",
+      "pain_description": "ทานยาแก้ปวดแล้วดีขึ้นเล็กน้อย แต่ยังปวดเวลาเคี้ยว",
+      "swelling_status": "บวมลดลง",
+      "swelling_description": "บวมบริเวณแก้มทั้งสองข้าง แต่ลดลงกว่าวันแรก",
+      "breathing_or_swallowing_difficulty": "ไม่มี",
+      "breathing_description": "",
+      "bleeding_status": "ไม่มีเลือดซึมหรือไหลแล้ว",
+      "bleeding_description": "",
+      "fever_status": "ไม่มีไข้",
+      "fever_description": "",
+      "numbness_status": "ยังชาอยู่แต่ชาน้อยลงเรื่อยๆ",
+      "numbness_description": "บริเวณริมฝีปากล่างซ้าย",
+      "phlebitis": "ไม่มีอาการปวด/บวม/แดง รอบรอยเข็ม",
+      "phlebitis_description": "",
+      "suture_status": "ไหมแน่นดี / ไม่ได้สังเกต",
+      "suture_description": "",
+      "other_symptoms": [
+        "คลื่นไส้/อาเจียน",
+        "ปากแห้ง"
+      ],
+      "other_symptoms_custom": "",
+      "antibiotic_compliance": "ครบตามแพทย์สั่ง",
+      "antibiotic_forgot_count": 0,
+      "compress_type": "ประคบเย็นอยู่",
+      "imf_wire_status": "ลวด/ยางมัดฟันแน่นดี",
+      "walking_status": "",
+      "brushing_teeth": "แปรงฟันได้",
+      "brushing_description": "",
+      "mouth_rinsing": "บ้วนปากได้",
+      "rinsing_description": "",
+      "food_types": [
+        "อาหารอ่อน",
+        "อาหารบด"
+      ],
+      "food_amount": "ปกติ",
+      "food_amount_description": "",
+      "additional_questions": "ควรประคบนานแค่ไหน? ใช้น้ำแข็งหรือเจลเย็นดีกว่ากัน?"
+    }
+  },
+  "flows": {
+    "อาการปวด": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "ทานยาตามแผนเดิม",
+      "reason": "Pain Score = 5, ทานยาแล้วดีขึ้น"
+    },
+    "อาการบวม": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "ประคบอุ่นนอกช่องปาก และนอนยกศีรษะสูง 30 องศา",
+      "reason": "บวมลดลง"
+    },
+    "อาการเลือดออก": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "ไม่มีเลือดซึมหรือไหลแล้ว"
+    },
+    "อาการไข้": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "ไม่มีไข้"
+    },
+    "ชา": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "สังเกตอาการ หากชานานเกิน 2 สัปดาห์ ควรพบทันตแพทย์",
+      "reason": "มีอาการชา"
+    },
+    "บริเวณที่เอาเข็มน้ำเกลือออกที่หลังมือหรือข้อมือ (phlebitis)": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "ไม่มี phlebitis"
+    },
+    "ไหมเย็บแผล": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "ไหมแน่นดี"
+    },
+    "คลื่นไส้/อาเจียน": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "มีอาการ: คลื่นไส้/อาเจียน"
+    },
+    "ปากแห้ง": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "มีอาการ: ปากแห้ง"
+    },
+    "รับประทานยาฆ่าเชื้อครบตามแผนการรักษาหรือไม่?": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "ทานยาฆ่าเชื้อครบ"
+    },
+    "ประคบเย็น หรือ อุ่นอยู่หรือไม่?": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "เปลี่ยนเป็นประคบอุ่น",
+      "reason": "ประคบเย็นอยู่ และไม่มีอาการเลือดซึม/เลือดออก/รอยช้ำ"
+    },
+    "หากมีการมัดฟันบนและล่างเข้าด้วยกัน ลวดมัดฟันแน่นดีหรือไม่?": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "ลวด/ยางมัดฟันแน่นดี"
+    },
+    "การเดิน: การรักษาการแหว่งของสันเหงือกโดยการนำกระดูกสะโพกมาปลูก": {
+      "risk_level": "ไม่ต้องประเมิน",
+      "recommendation": "",
+      "reason": "ไม่ได้ทำหัตถการนำกระดูกสะโพกมาปลูก"
+    },
+    "ตำแหน่งสายยางให้อาหาร: กรณีในผู้ป่วยที่รับประทานอาหารผ่านทางสายยาง (on NG-nasogastric tube)": {
+      "risk_level": "ไม่ต้องประเมิน",
+      "recommendation": "",
+      "reason": "ไม่มีสายยางให้อาหาร"
+    },
+    "การแปรงฟัน": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "แปรงฟันได้"
+    },
+    "การบ้วนปาก": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "บ้วนปากได้"
+    },
+    "ประเภทอาหารที่ทาน (สามารถเลือกได้หลายคำตอบ)": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "ประเภทอาหาร: อาหารอ่อน, อาหารบด"
+    },
+    "ปริมาณอาหารที่ทาน": {
+      "risk_level": "ความเสี่ยงต่ำ",
+      "recommendation": "",
+      "reason": "รับประทานอาหารปริมาณปกติ"
+    }
+  },
+  "language": "th",
+  "summary": {
+    "overall_risk": "ความเสี่ยงต่ำ",
+    "critical_issues": [],
+    "summary": "จากผลประเมินพบว่ามีความเสี่ยงในการเกิดภาวะแทรกซ้อนหลังการผ่าตัดในช่องปาก ระดับต่ำ\nอาการโดยรวมอยู่ในเกณฑ์ปกติ\n\nคำแนะนำเบื้องต้นตามอาการ\nอาการปวด: ทานยาตามแผนเดิม\nอาการบวม: ประคบอุ่นนอกช่องปาก และนอนยกศีรษะสูง 30 องศา\nอาการชา: สังเกตอาการ หากชานานเกิน 2 สัปดาห์ ควรพบทันตแพทย์\nการประคบ: เปลี่ยนเป็นประคบอุ่น\n\nหากมีข้อสงสัย โทร 02-2188750"
+  },
+  "errors": null
+}

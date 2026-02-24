@@ -9,7 +9,7 @@ Optimized for low latency and high relevance (Recall@K).
 
 import logging
 import time
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from src.core.types import Query, RetrievalResult
 from src.core.exceptions import RetrievalError
@@ -137,7 +137,8 @@ class RetrievalService:
         query_text: str,
         top_k: Optional[int] = None,
         top_n: Optional[int] = None,
-        use_reranking: bool = True
+        use_reranking: bool = True,
+        patient_context: Optional[Dict[str, Any]] = None
     ) -> RetrievalResult:
         """Retrieve relevant documents for a query.
 
@@ -151,6 +152,7 @@ class RetrievalService:
             top_k: Number of candidates from hybrid search. Uses default if None.
             top_n: Number of final results after reranking. Uses default if None.
             use_reranking: Whether to apply reranking (disable for faster retrieval).
+            patient_context: Optional patient data (summary, flows) for Phase 1.
 
         Returns:
             RetrievalResult with query, candidates, and reranked results.
@@ -166,9 +168,9 @@ class RetrievalService:
         start_time = time.time()
 
         try:
-            # Step 1: Process query
+            # Step 1: Process query with patient context
             logger.info(f"Processing query: '{query_text[:50]}...'")
-            query = self.query_processor.process(query_text)
+            query = self.query_processor.process(query_text, patient_context=patient_context)
 
             # Determine category filter
             category_filter = None

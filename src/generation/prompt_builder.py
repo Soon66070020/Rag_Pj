@@ -92,8 +92,19 @@ class PromptBuilder:
         # Build context section
         context = self._format_context(results)
 
-        # Build user message with context + query
-        user_message = self._build_user_message(context, user_query)
+        # NEW: Check if patient context is available (from Query object in retrieval_result)
+        query = retrieval_result.query
+        if query.patient_summary and query.patient_flows:
+            # Use summary-aware prompt
+            user_message = self._build_user_message_with_summary(
+                context,
+                user_query,
+                query.patient_summary,
+                query.patient_flows
+            )
+        else:
+            # Use regular prompt (backward compatible)
+            user_message = self._build_user_message(context, user_query)
 
         # Combine into messages
         messages = [
@@ -101,7 +112,10 @@ class PromptBuilder:
             {"role": "user", "content": user_message}
         ]
 
-        logger.debug(f"Built prompt with {len(results)} context chunks")
+        logger.debug(
+            f"Built prompt with {len(results)} context chunks, "
+            f"patient_context={bool(query.patient_summary)}"
+        )
 
         return messages
 
@@ -314,6 +328,126 @@ ANSWER (in Thai with citations):"""
             return False
 
         return True
+
+    def _check_summary_coverage(
+        self,
+        user_query: str,
+        flows: Dict[str, Any]
+    ) -> Optional[str]:
+        """Check if query matches any flow topic.
+
+        Args:
+            user_query: User's question.
+            flows: Flow assessment results.
+
+        Returns:
+            Matched topic name or None.
+
+        Example:
+            >>> flows = {"อาการปวด": "...", "อาการบวม": "...", "การประคบ": "..."}
+            >>> topic = builder._check_summary_coverage("ควรประคบยังไง", flows)
+            >>> # Returns "การประคบ"
+        """
+        if not flows:
+            return None
+
+        # Simple keyword matching for flow topics
+        query_lower = user_query.lower()
+
+        for topic in flows.keys():
+            # Check if topic keywords appear in query
+            topic_lower = topic.lower()
+
+            # Extract key terms from topic (e.g., "อาการปวด" → "ปวด")
+            key_terms = topic_lower.split()
+
+            for term in key_terms:
+                if term in query_lower:
+                    logger.info(f"Query matches flow topic: {topic}")
+                    return topic
+
+        return None
+
+    def _format_patient_assessment(
+        self,
+        flows: Dict[str, Any]
+    ) -> str:
+        """Format flow assessment data for inclusion in prompt.
+
+        Args:
+            flows: Flow assessment results.
+
+        Returns:
+            Formatted assessment string.
+
+        Example output:
+            อาการปวด: ทานยาตามแผนเดิม
+            อาการบวม: ประคบอุ่นนอกช่องปาก และนอนยกศีรษะสูง 30 องศา
+            การประคบ: เปลี่ยนเป็นประคบอุ่น
+        """
+        if not flows:
+            return ""
+
+        assessment_lines = []
+        for topic, recommendation in flows.items():
+            assessment_lines.append(f"{topic}: {recommendation}")
+
+        return "\n".join(assessment_lines)
+
+    def _build_user_message_with_summary(
+        self,
+        context: str,
+        user_query: str,
+        patient_summary: str,
+        patient_flows: Dict[str, Any]
+    ) -> str:
+        """Build user message with summary priority.
+
+        Args:
+            context: Formatted context string from retrieved documents.
+            user_query: User's question.
+            patient_summary: Patient assessment summary text.
+            patient_flows: Flow assessment results.
+
+        Returns:
+            Complete user message string with summary priority.
+        """
+        # Check if query matches any flow topic
+        summary_coverage = self._check_summary_coverage(user_query, patient_flows)
+
+        # Format flow assessments
+        assessment_text = self._format_patient_assessment(patient_flows)
+
+        # Build priority instruction if query matches a flow topic
+        priority_instruction = ""
+        if summary_coverage:
+            priority_instruction = f"""
+⚠️ IMPORTANT: This question is about "{summary_coverage}" which is already addressed
+in the Patient Assessment Summary below. Please base your answer PRIMARILY on the summary
+recommendation for this topic, then add supporting details from the retrieved context.
+"""
+
+        message = f"""Based on the patient assessment summary AND retrieved context, answer the question.
+
+{priority_instruction}
+
+📋 PATIENT ASSESSMENT SUMMARY:
+{patient_summary}
+
+📊 DETAILED ASSESSMENT BY TOPIC:
+{assessment_text}
+
+📚 RETRIEVED CONTEXT (for additional details):
+{context}
+
+❓ QUESTION:
+{user_query}
+
+{self.citation_instruction}
+
+💬 ANSWER (in Thai with citations - cite summary and/or documents):"""
+
+        return message
 
     @staticmethod
     def _default_system_prompt() -> str:

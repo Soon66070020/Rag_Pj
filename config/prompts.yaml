@@ -78,11 +78,15 @@ category_inference_prompt: |
 
 # Citation format instructions
 citation_format_instruction: |
-  IMPORTANT: All factual statements must include citations.
+  ⚠️ IMPORTANT: All factual statements must include citations.
 
-  Format: [Source: filename, Page: number]
+  Citation Format:
+  - Document source: [Source: filename, Page: number]
+  - Patient assessment summary: [Source: Patient Assessment Summary]
+  - Both: [Source: Patient Assessment Summary + filename, Page: number]
 
-  Examples:
-  - Single source: [Source: dental_care.pdf, Page: 5]
-  - Multiple sources: [Source: care_guide.pdf, Page: 3], [Source: medication_info.pdf, Page: 12]
-  - Thai filename: [Source: คู่มือดูแลหลังผ่าตัด.pdf, Page: 7]
+  Citation Examples:
+  - [Source: Patient Assessment Summary]
+  - [Source: dental_care.pdf, Page: 5]
+  - [Source: Patient Assessment Summary + care_guide.pdf, Page: 3]
+  - [Source: คู่มือดูแลหลังผ่าตัด.pdf, Page: 7]

@@ -75,7 +75,11 @@ class QueryProcessor:
 
         logger.info(f"QueryProcessor initialized (Q2D: {'enabled' if q2d_client else 'disabled'})")
 
-    def process(self, query_text: str) -> Query:
+    def process(
+        self,
+        query_text: str,
+        patient_context: Optional[Dict[str, Any]] = None
+    ) -> Query:
         """Process a user query.
 
         Complete processing pipeline:
@@ -83,9 +87,11 @@ class QueryProcessor:
         2. Clean for embedding
         3. Generate embeddings (dense + sparse)
         4. Infer category from Thai keywords
+        5. Extract patient context (summary, flows) if provided
 
         Args:
             query_text: Raw user query in Thai or mixed Thai-English.
+            patient_context: Optional patient data including summary and flows.
 
         Returns:
             Query object with all fields populated.
@@ -122,6 +128,18 @@ class QueryProcessor:
             # Step 4: Generate embeddings (from Q2D expansion or original query)
             dense_vector, sparse_vector = self._generate_embeddings(embedding_text)
 
+            # Step 5: Extract patient summary and flows (Phase 1)
+            patient_summary = None
+            patient_flows = None
+            if patient_context:
+                summary_data = patient_context.get('summary', {})
+                patient_summary = summary_data.get('summary', '')
+                patient_flows = patient_context.get('flows', {})
+                logger.debug(
+                    f"Patient context loaded: summary={bool(patient_summary)}, "
+                    f"flows={len(patient_flows)} items"
+                )
+
             # Create Query object
             query = Query(
                 original_text=query_text,
@@ -130,12 +148,15 @@ class QueryProcessor:
                 inferred_category=category,
                 dense_vector=dense_vector,
                 sparse_vector=sparse_vector,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
+                patient_summary=patient_summary,
+                patient_flows=patient_flows
             )
 
             logger.debug(
                 f"Processed query: '{query_text[:50]}...' "
-                f"(category: {category}, q2d: {'yes' if q2d_expansion else 'no'})"
+                f"(category: {category}, q2d: {'yes' if q2d_expansion else 'no'}, "
+                f"patient_context: {'yes' if patient_context else 'no'})"
             )
 
             return query

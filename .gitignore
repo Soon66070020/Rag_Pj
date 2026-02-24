@@ -89,6 +89,7 @@ dmypy.json
 # Documentation
 docs/_build/
 PROJECT_STRUCTURE_THESIS.md
+CLAUDE.md
 
 # Temporary files
 *.tmp

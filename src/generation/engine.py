@@ -95,7 +95,8 @@ class GenerationEngine:
         retrieval_result: RetrievalResult,
         user_query: Optional[str] = None,
         temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None
+        max_tokens: Optional[int] = None,
+        patient_context: Optional[Dict[str, Any]] = None
     ) -> GeneratedResponse:
         """Generate response based on retrieval results.
 
@@ -111,6 +112,7 @@ class GenerationEngine:
             user_query: Original query. Uses query from retrieval_result if None.
             temperature: Override LLM temperature.
             max_tokens: Override max tokens.
+            patient_context: Optional patient data (not used in Phase 1, for future use).
 
         Returns:
             GeneratedResponse with answer and citations.
@@ -125,6 +127,10 @@ class GenerationEngine:
             ... )
             >>> print(response.answer)
             >>> print(f"Citations: {response.citations}")
+
+        Note:
+            In Phase 1, patient context is already embedded in retrieval_result.query,
+            so the patient_context parameter is not used. Added for API consistency.
         """
         start_time = time.time()
 

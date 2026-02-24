@@ -47,6 +47,8 @@ class Query:
         dense_vector: Dense embedding of query.
         sparse_vector: Sparse representation of query.
         timestamp: When query was received.
+        patient_summary: Patient assessment summary text (Phase 1).
+        patient_flows: Flow assessment results dict (Phase 1).
     """
     original_text: str
     processed_text: str = ""
@@ -55,6 +57,8 @@ class Query:
     dense_vector: Optional[List[float]] = None
     sparse_vector: Optional[Dict[str, float]] = None
     timestamp: datetime = field(default_factory=datetime.now)
+    patient_summary: Optional[str] = None
+    patient_flows: Optional[Dict[str, Any]] = None
 
 
 @dataclass
