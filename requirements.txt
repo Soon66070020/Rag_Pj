@@ -23,6 +23,10 @@ torch==2.3.1
 sentence-transformers==3.0.1
 FlagEmbedding==1.2.11
 
+# API Framework
+fastapi==0.115.6
+uvicorn==0.32.1
+
 # Development Tools
 pytest==8.3.3
 black==24.8.0

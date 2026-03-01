@@ -215,6 +215,113 @@ class HybridSearcher:
 
         return results
 
+    def search_multi_category(
+        self,
+        query: Query,
+        categories: List[str],
+        top_k: Optional[int] = None,
+        min_results: int = 5,
+        score_boost: float = 0.1
+    ) -> List[SearchResult]:
+        """3-round fallback search using multi-category filtering.
+
+        Round 1: Filter by categories array (contains_any).
+        Round 2: If too few results, search without filter.
+        Category-matched results get a score boost.
+
+        Args:
+            query: Processed query with embeddings.
+            categories: List of L1 category names to filter by.
+            top_k: Number of results to retrieve per round.
+            min_results: Minimum results before falling back.
+            score_boost: Score bonus for category-matched results.
+
+        Returns:
+            List of SearchResult objects, deduplicated and sorted.
+        """
+        top_k = top_k or self.top_k
+        seen_ids: set = set()
+        all_results: List[SearchResult] = []
+
+        # Round 1: Search with category filter
+        if categories:
+            cat_filter = self._build_multi_category_filter(categories)
+            if cat_filter:
+                try:
+                    collection = self.db_manager.get_collection()
+                    response = collection.query.hybrid(
+                        query=query.processed_text,
+                        vector=query.dense_vector,
+                        alpha=self.alpha,
+                        limit=top_k,
+                        return_metadata=['score', 'distance'],
+                        filters=cat_filter,
+                    )
+                    round1 = self._parse_results(response, query)
+                    for r in round1:
+                        doc_id = r.document.id
+                        if doc_id not in seen_ids:
+                            r.score = r.score + score_boost
+                            r.score_breakdown['category_boost'] = score_boost
+                            all_results.append(r)
+                            seen_ids.add(doc_id)
+
+                    logger.info(
+                        f"Round 1 (category filter {categories}): "
+                        f"{len(round1)} results"
+                    )
+                except Exception as e:
+                    logger.warning(f"Round 1 search failed: {e}")
+
+        # Round 2: No filter (if not enough results)
+        if len(all_results) < min_results:
+            try:
+                round2 = self.search(query, top_k=top_k, category_filter=None)
+                for r in round2:
+                    doc_id = r.document.id
+                    if doc_id not in seen_ids:
+                        all_results.append(r)
+                        seen_ids.add(doc_id)
+
+                logger.info(
+                    f"Round 2 (no filter): {len(round2)} results, "
+                    f"total unique: {len(all_results)}"
+                )
+            except Exception as e:
+                logger.warning(f"Round 2 search failed: {e}")
+
+        # Re-sort by score and re-rank
+        all_results.sort(key=lambda r: r.score, reverse=True)
+        for rank, result in enumerate(all_results, start=1):
+            result.rank = rank
+
+        return all_results
+
+    def _build_multi_category_filter(self, categories: List[str]) -> Optional[Any]:
+        """Build Weaviate filter for multi-category array field.
+
+        Uses 'categories' text[] field with contains_any.
+
+        Args:
+            categories: List of L1 category names.
+
+        Returns:
+            Weaviate filter object or None.
+        """
+        if not categories:
+            return None
+
+        try:
+            from weaviate.classes.query import Filter
+
+            filters = Filter.by_property("categories").contains_any(categories)
+            logger.debug(f"Applied multi-category filter: {categories}")
+            return filters
+
+        except Exception as e:
+            logger.warning(f"Failed to build multi-category filter: {e}")
+            return None
+
     def search_by_vector(
         self,
         vector: List[float],

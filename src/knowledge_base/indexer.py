@@ -80,10 +80,22 @@ class DocumentIndexer:
             use_token_count=chunking_config.get('use_token_count', False)
         )
 
+        # Load taxonomy for multi-category classification
+        taxonomy = None
+        taxonomy_path = settings.config_dir / "taxonomy.yaml"
+        if taxonomy_path.exists():
+            import yaml
+            with open(taxonomy_path, 'r', encoding='utf-8') as f:
+                taxonomy_data = yaml.safe_load(f)
+            taxonomy = taxonomy_data.get('taxonomy', None)
+            if taxonomy:
+                logger.info(f"Loaded taxonomy with {len(taxonomy)} L1 categories")
+
         # Initialize metadata extractor
         self.metadata_extractor = MetadataExtractor(
             auto_infer_category=True,
-            extract_keywords=True
+            extract_keywords=True,
+            taxonomy=taxonomy
         )
 
         # Initialize embedding generator
@@ -442,6 +454,8 @@ class DocumentIndexer:
                         properties = {
                             'content': doc.content,
                             'category': doc.category,
+                            'categories': doc.metadata.get('categories', [doc.category]),
+                            'subcategories': doc.metadata.get('subcategories', []),
                             'source_file': doc.source_file,
                             'page_number': doc.page_number
                         }

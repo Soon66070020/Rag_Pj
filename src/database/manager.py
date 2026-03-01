@@ -161,6 +161,7 @@ class WeaviateManager:
                 # Map data types
                 data_type_map = {
                     "text": DataType.TEXT,
+                    "text[]": DataType.TEXT_ARRAY,
                     "int": DataType.INT,
                     "number": DataType.NUMBER,
                     "boolean": DataType.BOOL,

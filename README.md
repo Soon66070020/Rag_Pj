@@ -263,8 +263,7 @@ print(response.answer)
 
 ## 📖 Documentation
 
-- [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) - Full PRD and requirements
-- [Plan Document](.claude/plans/) - Implementation plan
+- [PLAN_API_E5_LARGE.md](PLAN_API_E5_LARGE.md) - API & E5-Large migration plan
 
 ## 🤝 Contributing
 

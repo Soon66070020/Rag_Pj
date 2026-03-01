@@ -12,6 +12,7 @@ from pathlib import Path
 
 from src.utils.text_processing import (
     infer_category_from_thai_keywords,
+    infer_categories_from_taxonomy,
     extract_thai_keywords
 )
 
@@ -41,7 +42,8 @@ class MetadataExtractor:
         self,
         auto_infer_category: bool = True,
         extract_keywords: bool = True,
-        default_category: str = "Post-op Care"
+        default_category: str = "Post-op Care",
+        taxonomy: Optional[Dict[str, Any]] = None
     ):
         """Initialize metadata extractor.
 
@@ -49,10 +51,14 @@ class MetadataExtractor:
             auto_infer_category: Automatically infer category from content.
             extract_keywords: Extract Thai keywords from content.
             default_category: Default category if inference fails.
+            taxonomy: Optional taxonomy dict for multi-category inference.
+                If provided, uses taxonomy-based classification instead of
+                simple keyword matching.
         """
         self.auto_infer_category = auto_infer_category
         self.extract_keywords = extract_keywords
         self.default_category = default_category
+        self.taxonomy = taxonomy
 
     def extract(
         self,
@@ -97,8 +103,19 @@ class MetadataExtractor:
         if self.auto_infer_category:
             category = self._infer_category(text, metadata)
             metadata['category'] = category
+
+            # Multi-category inference using taxonomy
+            if self.taxonomy:
+                tax_result = infer_categories_from_taxonomy(text, self.taxonomy)
+                metadata['categories'] = tax_result['categories']
+                metadata['subcategories'] = tax_result['subcategories']
+            else:
+                metadata['categories'] = [category]
+                metadata['subcategories'] = []
         else:
             metadata['category'] = metadata.get('category', self.default_category)
+            metadata['categories'] = [metadata['category']]
+            metadata['subcategories'] = []
 
         # Keyword extraction
         if self.extract_keywords:

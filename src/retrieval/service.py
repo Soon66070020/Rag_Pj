@@ -9,13 +9,14 @@ Optimized for low latency and high relevance (Recall@K).
 
 import logging
 import time
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 
 from src.core.types import Query, RetrievalResult
 from src.core.exceptions import RetrievalError
 from src.retrieval.query_processor import QueryProcessor
 from src.retrieval.hybrid_search import HybridSearcher
 from src.retrieval.reranker import BGEReranker
+from src.retrieval.query_guard import QueryGuard, QueryGuardResult
 from src.database.manager import WeaviateManager
 from src.generation.client import DeepSeekClient
 from src.generation.prompt_builder import PromptBuilder
@@ -126,6 +127,27 @@ class RetrievalService:
             device=reranker_config.get('device', 'cuda'),
             use_fp16=reranker_config.get('use_fp16', True)
         )
+
+        # Initialize Query Guard (multi-LLM pipeline)
+        guard_config = settings.model_config.get('query_guard', {})
+        if guard_config:
+            logger.info("Initializing Query Guard (deepseek-chat)...")
+            guard_client = DeepSeekClient(
+                api_key=settings.deepseek_api_key,
+                model_name=guard_config.get('model_name', 'deepseek-chat'),
+                api_base=guard_config.get('api_base', 'https://api.deepseek.com'),
+                temperature=guard_config.get('temperature', 0.1),
+                max_tokens=guard_config.get('max_tokens', 4096),
+                timeout=guard_config.get('timeout', 30),
+            )
+            self.query_guard: Optional[QueryGuard] = QueryGuard(
+                llm_client=guard_client,
+                prompts=settings.prompts,
+            )
+            logger.info("Query Guard ready")
+        else:
+            self.query_guard = None
+            logger.info("Query Guard not configured, skipping")
 
         logger.info(
             f"RetrievalService ready: alpha={self.alpha}, "
@@ -279,6 +301,120 @@ class RetrievalService:
             reranked_results=reranked,
             metadata_filters={'category': category}
         )
+
+    def retrieve_with_guard(
+        self,
+        query_text: str,
+        patient_context: Optional[Dict[str, Any]] = None,
+        top_k: Optional[int] = None,
+        top_n: Optional[int] = None,
+    ) -> Tuple[QueryGuardResult, Optional[RetrievalResult]]:
+        """Retrieve with multi-LLM query guard pipeline.
+
+        Pipeline:
+        1. QueryGuard: scope check → clarification/rewrite → classification
+        2. If out-of-domain: return early (no retrieval)
+        3. Multi-category search using classification results
+        4. Rerank with BGE cross-encoder
+
+        Args:
+            query_text: User query in Thai.
+            patient_context: Full patient data dict (patient, flows, summary).
+            top_k: Number of candidates from hybrid search.
+            top_n: Number of final results after reranking.
+
+        Returns:
+            Tuple of (QueryGuardResult, Optional[RetrievalResult]).
+            RetrievalResult is None when query is out-of-domain.
+        """
+        if self.query_guard is None:
+            # No guard configured — fall back to normal retrieve
+            logger.warning("QueryGuard not configured, using standard retrieve")
+            guard_result = QueryGuardResult(
+                is_in_scope=True,
+                clarification_needed=False,
+                original_query=query_text,
+                effective_query=query_text,
+            )
+            retrieval_result = self.retrieve(
+                query_text,
+                top_k=top_k,
+                top_n=top_n,
+                patient_context=patient_context,
+            )
+            return guard_result, retrieval_result
+
+        # Run guard pipeline
+        guard_result = self.query_guard.run(query_text, patient_context)
+
+        # Out of domain → return early, no retrieval
+        if not guard_result.is_in_scope:
+            logger.info("Query out of domain, skipping retrieval")
+            return guard_result, None
+
+        # Use effective_query (may be rewritten by LLM2)
+        effective_query = guard_result.effective_query
+        start_time = time.time()
+
+        try:
+            # Process query with embeddings
+            query = self.query_processor.process(
+                effective_query, patient_context=patient_context
+            )
+
+            # Determine search strategy based on classification
+            categories = []
+            if guard_result.classification:
+                categories = [
+                    c.category for c in guard_result.classification.categories
+                ]
+
+            # Multi-category search with fallback
+            if categories:
+                logger.info(f"Multi-category search: {categories}")
+                candidates = self.hybrid_searcher.search_multi_category(
+                    query=query,
+                    categories=categories,
+                    top_k=top_k,
+                )
+            else:
+                # No classification → standard search
+                candidates = self.hybrid_searcher.search(
+                    query=query, top_k=top_k
+                )
+
+            if not candidates:
+                logger.warning("No candidates found")
+                return guard_result, RetrievalResult(
+                    query=query,
+                    candidates=[],
+                    reranked_results=[],
+                    metadata_filters={'categories': categories},
+                    retrieval_time_ms=(time.time() - start_time) * 1000,
+                )
+
+            # Rerank
+            reranked = self.reranker.rerank(query, candidates, top_n=top_n)
+
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.info(
+                f"Guard retrieval complete: {len(reranked)} results "
+                f"in {elapsed_ms:.0f}ms"
+            )
+
+            retrieval_result = RetrievalResult(
+                query=query,
+                candidates=candidates,
+                reranked_results=reranked,
+                metadata_filters={'categories': categories},
+                retrieval_time_ms=elapsed_ms,
+            )
+            return guard_result, retrieval_result
+
+        except Exception as e:
+            error_msg = f"Retrieval with guard failed: {e}"
+            logger.error(error_msg)
+            raise RetrievalError(error_msg) from e
 
 
 def retrieve(

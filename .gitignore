@@ -49,6 +49,7 @@ outputs/
 *.csv
 *.json
 !config/*.json
+!examples/*.json
 
 # Data (except structure)
 data/raw/*

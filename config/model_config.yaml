@@ -47,10 +47,10 @@ q2d:
 # Chunking Strategy for Document Processing
 chunking:
   strategy: "semantic"  # Options: "semantic", "fixed", "recursive"
-  chunk_size: 256  # Target chunk size (tokens when use_token_count=true)
+  chunk_size: 512  # Target chunk size (tokens when use_token_count=true)
   chunk_overlap: 30  # Overlap between chunks
   min_chunk_size: 50  # Minimum chunk size
-  max_chunk_size: 512  # Maximum chunk size
+  max_chunk_size: 1024  # Maximum chunk size
   use_token_count: true  # true=count Thai tokens, false=count characters
 
 # Thai Language Processing Settings 🇹🇭
@@ -60,6 +60,14 @@ thai_processing:
   normalize_text: true
   extract_keywords: true
   keyword_top_n: 10
+
+# Query Guard LLM Configuration (multi-LLM pipeline)
+query_guard:
+  model_name: "deepseek-chat"
+  api_base: "https://api.deepseek.com"
+  temperature: 0.1
+  max_tokens: 4096
+  timeout: 30
 
 # Weaviate Configuration
 weaviate:

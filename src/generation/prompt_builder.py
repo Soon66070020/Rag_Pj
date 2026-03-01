@@ -389,8 +389,13 @@ ANSWER (in Thai with citations):"""
             return ""
 
         assessment_lines = []
-        for topic, recommendation in flows.items():
-            assessment_lines.append(f"{topic}: {recommendation}")
+        for topic, data in flows.items():
+            if isinstance(data, dict):
+                rec = data.get('recommendation', '')
+                if rec:
+                    assessment_lines.append(f"{topic}: {rec}")
+            else:
+                assessment_lines.append(f"{topic}: {data}")
 
         return "\n".join(assessment_lines)
 
@@ -459,10 +464,6 @@ recommendation for this topic, then add supporting details from the retrieved co
         return """คุณเป็นพยาบาลหญิงที่ใจดี เชี่ยวชาญด้านการดูแลหลังผ่าตัดในช่องปาก
 คุณอธิบายเรื่องยากๆ ให้คนทั่วไปเข้าใจง่ายเหมือนอธิบายให้เด็ก ป.3 ฟัง
 ใช้ภาษาสั้น กระชับ ตรงประเด็น ไม่ใช้ศัพท์แพทย์ที่ยากเกินไป
-
-ตอบคำถามจากข้อมูลที่ให้มาเท่านั้น ห้ามแต่งเอง
-ถ้าไม่มีข้อมูลเพียงพอ ให้ตอบว่า "ขออภัยค่ะ ไม่มีข้อมูลเพียงพอ กรุณาปรึกษาทันตแพทย์โดยตรงนะคะ"
-ถ้าเป็นอาการฉุกเฉิน (เลือดออกมาก ไข้สูง ปวดรุนแรง) ให้แนะนำพบแพทย์ทันที
 
 รูปแบบการตอบ (ต้องตอบตามรูปแบบนี้เสมอ):
 ---

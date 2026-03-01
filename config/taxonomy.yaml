@@ -1,0 +1,62 @@
+# Taxonomy for dental post-operative care document classification
+# 2-level hierarchy: L1 (main category) → L2 (subcategory)
+# Each level has Thai keywords for automatic matching
+
+taxonomy:
+  Emergency:
+    keywords_th: [ฉุกเฉิน, ด่วน, อันตราย, รุนแรง]
+    subcategories:
+      bleeding:
+        keywords_th: [เลือดออก, เลือดไหล, เลือดซึม, เลือดหยุด, ห้ามเลือด]
+      severe_pain:
+        keywords_th: [ปวดมาก, ปวดรุนแรง, ทนไม่ได้, เจ็บมาก, ปวดทรมาน]
+      high_fever:
+        keywords_th: [ไข้สูง, มีไข้, ตัวร้อน, อุณหภูมิสูง]
+      severe_swelling:
+        keywords_th: [บวมมาก, บวมรุนแรง, บวมไม่ลด, บวมแดง]
+      breathing_difficulty:
+        keywords_th: [หายใจลำบาก, หายใจไม่ออก, กลืนลำบาก, หายใจติดขัด]
+
+  Medication:
+    keywords_th: [ยา, ทานยา, กินยา, ยาเม็ด, แคปซูล]
+    subcategories:
+      painkillers:
+        keywords_th: [ยาแก้ปวด, พาราเซตามอล, ไอบูโพรเฟน, แก้ปวด, ยาพาราฯ, ยาบรรเทาปวด]
+      antibiotics:
+        keywords_th: [ยาปฏิชีวนะ, ยาฆ่าเชื้อ, แอนตี้ไบโอติก, ยาต้านเชื้อ, อะม็อกซีซิลลิน]
+      anti_inflammatory:
+        keywords_th: [ยาแก้อักเสบ, ยาลดอักเสบ, ต้านอักเสบ, ยาลดบวม]
+      mouthwash:
+        keywords_th: [น้ำยาบ้วนปาก, บ้วนปาก, คลอเฮกซิดีน, น้ำเกลือ]
+
+  Nutrition:
+    keywords_th: [อาหาร, กิน, ดื่ม, รับประทาน, เครื่องดื่ม, ทาน]
+    subcategories:
+      soft_food:
+        keywords_th: [อาหารอ่อน, โจ๊ก, ข้าวต้ม, น้ำซุป, อาหารบด, อาหารเหลว]
+      forbidden_food:
+        keywords_th: [ห้ามกิน, งด, อาหารแข็ง, เผ็ด, ร้อนจัด, ของทอด, ของกรอบ]
+      drinks:
+        keywords_th: [น้ำดื่ม, น้ำผลไม้, เครื่องดื่ม, แอลกอฮอล์, หลอด, ดูดหลอด]
+      supplements:
+        keywords_th: [วิตามิน, อาหารเสริม, แคลเซียม, โปรตีน]
+
+  Post-op Care:
+    keywords_th: [ดูแล, หลังผ่าตัด, พักผ่อน, ปฏิบัติตัว, การฟื้นตัว]
+    subcategories:
+      wound_care:
+        keywords_th: [แผล, ดูแลแผล, ทำแผล, แผลหาย, แผลติดเชื้อ, หนอง]
+      compression:
+        keywords_th: [ประคบ, ประคบเย็น, ประคบอุ่น, น้ำแข็ง, เจลเย็น, ประคบร้อน]
+      oral_hygiene:
+        keywords_th: [แปรงฟัน, สุขภาพช่องปาก, ทำความสะอาด, ล้างปาก]
+      activity:
+        keywords_th: [ออกกำลังกาย, กิจกรรม, ยกของหนัก, วิ่ง, กีฬา, ทำงานหนัก]
+      sutures:
+        keywords_th: [ไหมเย็บ, ตัดไหม, ไหม, เย็บแผล]
+      numbness:
+        keywords_th: [ชา, อาการชา, ไม่มีความรู้สึก, ชาริมฝีปาก]
+      sleep_position:
+        keywords_th: [นอน, ท่านอน, ยกศีรษะ, หมอน, นอนหงาย]
+      swelling:
+        keywords_th: [บวม, อาการบวม, บวมลดลง, บวมแก้ม, หน้าบวม]

@@ -141,6 +141,20 @@ class CitationError(RAGSystemError):
     pass
 
 
+# Query Guard Exceptions
+
+class QueryGuardError(RAGSystemError):
+    """Raised when query guard pipeline fails.
+
+    Examples:
+        - Scope check LLM call failure
+        - Clarification check failure
+        - Classification failure
+        - JSON parsing error in guard response
+    """
+    pass
+
+
 # Module 4: Evaluation Exceptions
 
 class EvaluationError(RAGSystemError):

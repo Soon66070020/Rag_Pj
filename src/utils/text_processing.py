@@ -8,7 +8,7 @@ The system primarily supports Thai language with mixed Thai-English documents.
 
 import re
 import unicodedata
-from typing import List
+from typing import List, Dict, Any
 from collections import Counter
 
 
@@ -240,6 +240,70 @@ def infer_category_from_thai_keywords(query: str) -> str:
     # Default to general post-op care
     else:
         return "Post-op Care"
+
+
+def infer_categories_from_taxonomy(text: str, taxonomy: Dict[str, Any]) -> Dict[str, Any]:
+    """Infer multiple categories from text using a 2-level taxonomy.
+
+    Scans text for keyword matches at both L1 (main category) and L2
+    (subcategory) levels. A single chunk can match multiple categories.
+
+    Args:
+        text: Text content to classify.
+        taxonomy: Taxonomy dict loaded from config/taxonomy.yaml.
+            Expected structure: {category: {keywords_th: [...], subcategories: {name: {keywords_th: [...]}}}}
+
+    Returns:
+        Dict with:
+            - primary_category: L1 with most keyword matches (fallback "Post-op Care")
+            - categories: List of all matched L1 categories
+            - subcategories: List of all matched L2 subcategory names
+    """
+    tokens = set(tokenize_thai(text.lower()))
+    text_lower = text.lower()
+
+    l1_match_counts: Dict[str, int] = {}
+    matched_categories: set = set()
+    matched_subcategories: set = set()
+
+    for l1_name, l1_data in taxonomy.items():
+        l1_name_str = str(l1_name)
+        l1_count = 0
+
+        # Check L1 keywords
+        l1_keywords: List[str] = [str(k) for k in l1_data.get('keywords_th', [])]
+        for kw in l1_keywords:
+            if kw in tokens or kw in text_lower:
+                l1_count += 1
+
+        # Check L2 subcategories
+        subcategories = l1_data.get('subcategories', {})
+        for l2_name, l2_data in subcategories.items():
+            l2_name_str = str(l2_name)
+            l2_keywords: List[str] = [str(k) for k in l2_data.get('keywords_th', [])]
+            for kw in l2_keywords:
+                if kw in tokens or kw in text_lower:
+                    l1_count += 1
+                    matched_categories.add(l1_name_str)
+                    matched_subcategories.add(l2_name_str)
+                    break  # Count each L2 once
+
+        if l1_count > 0:
+            l1_match_counts[l1_name_str] = l1_count
+            matched_categories.add(l1_name_str)
+
+    # Determine primary category (highest match count)
+    if l1_match_counts:
+        primary = max(l1_match_counts.keys(), key=lambda k: l1_match_counts[k])
+    else:
+        primary = "Post-op Care"
+        matched_categories.add("Post-op Care")
+
+    return {
+        "primary_category": primary,
+        "categories": sorted(matched_categories),
+        "subcategories": sorted(matched_subcategories),
+    }
 
 
 def clean_thai_text_for_embedding(text: str) -> str:

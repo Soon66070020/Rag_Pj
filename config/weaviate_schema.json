@@ -26,6 +26,18 @@
       "description": "Page number in source document"
     },
     {
+      "name": "categories",
+      "dataType": ["text[]"],
+      "description": "All matching L1 categories from taxonomy (multi-label)",
+      "indexFilterable": true
+    },
+    {
+      "name": "subcategories",
+      "dataType": ["text[]"],
+      "description": "All matching L2 subcategories from taxonomy (multi-label)",
+      "indexFilterable": true
+    },
+    {
       "name": "chunk_index",
       "dataType": ["int"],
       "description": "Sequential index of this chunk within the source document"

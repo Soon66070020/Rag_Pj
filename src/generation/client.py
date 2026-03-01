@@ -127,7 +127,8 @@ class DeepSeekClient:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
-        stop: Optional[List[str]] = None
+        stop: Optional[List[str]] = None,
+        response_format: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
         """Generate response from DeepSeek API with retry logic.
 
@@ -137,6 +138,7 @@ class DeepSeekClient:
             max_tokens: Override default max tokens.
             top_p: Override default top_p.
             stop: Stop sequences for generation.
+            response_format: Optional format spec, e.g. {"type": "json_object"}.
 
         Returns:
             Dict containing:
@@ -168,15 +170,19 @@ class DeepSeekClient:
             logger.debug(f"Calling DeepSeek API: {len(messages)} messages")
 
             # Call DeepSeek API via OpenAI client
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                temperature=temp,
-                max_tokens=max_tok,
-                top_p=top_p_val,
-                stop=stop,
-                stream=self.stream
-            )
+            api_kwargs = {
+                "model": self.model_name,
+                "messages": messages,
+                "temperature": temp,
+                "max_tokens": max_tok,
+                "top_p": top_p_val,
+                "stop": stop,
+                "stream": self.stream,
+            }
+            if response_format is not None:
+                api_kwargs["response_format"] = response_format
+
+            response = self.client.chat.completions.create(**api_kwargs)
 
             # Extract response content
             if self.stream:
