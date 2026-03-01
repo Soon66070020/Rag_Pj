@@ -142,24 +142,8 @@ class PromptBuilder:
         for idx, result in enumerate(results, start=1):
             doc = result.document
 
-            # Format source information
-            source_info = (
-                f"(Source: {doc.source_file}, "
-                f"Page: {doc.page_number}, "
-                f"Score: {result.score:.2f})"
-            )
-
-            # Add category if available
-            if doc.category:
-                source_info = (
-                    f"(Category: {doc.category}, "
-                    f"Source: {doc.source_file}, "
-                    f"Page: {doc.page_number}, "
-                    f"Score: {result.score:.2f})"
-                )
-
-            # Build context chunk
-            chunk = f"[Context {idx}] {source_info}\n{doc.content}\n"
+            # Build context chunk (content only, no source metadata)
+            chunk = f"[Context {idx}]\n{doc.content}\n"
             context_parts.append(chunk)
 
             # Check if we're exceeding max length
@@ -188,15 +172,13 @@ class PromptBuilder:
         """
         message = f"""Based on the following context, please answer the question.
 
-{self.citation_instruction}
-
 CONTEXT:
 {context}
 
 QUESTION:
 {user_query}
 
-ANSWER (in Thai with citations):"""
+ANSWER (in Thai):"""
 
         return message
 
@@ -448,9 +430,7 @@ recommendation for this topic, then add supporting details from the retrieved co
 ❓ QUESTION:
 {user_query}
 
-{self.citation_instruction}
-
-💬 ANSWER (in Thai with citations - cite summary and/or documents):"""
+💬 ANSWER (in Thai):"""
 
         return message
 

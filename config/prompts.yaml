@@ -72,19 +72,8 @@ category_inference_prompt: |
 
   Return only the category name.
 
-# Citation format instructions
-citation_format_instruction: |
-  IMPORTANT: All factual statements must include citations.
-
-  Citation Format:
-  - Document source: [Source: filename, Page: number]
-  - Patient assessment summary: [Source: Patient Assessment Summary]
-  - Both: [Source: Patient Assessment Summary + filename, Page: number]
-
-  Citation Examples:
-  - [Source: Patient Assessment Summary]
-  - [Source: dental_care.pdf, Page: 5]
-  - [Source: Patient Assessment Summary + care_guide.pdf, Page: 3]
+# Citation format instructions (empty - citations are generated from retrieval results)
+citation_format_instruction: ""
 
 # ============================================================
 # Query Guard Pipeline Prompts (Multi-LLM)

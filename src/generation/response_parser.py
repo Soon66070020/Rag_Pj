@@ -89,36 +89,22 @@ class ResponseParser:
             ...     "ฉันควรกินยาไหม"
             ... )
         """
-        # Extract citations
-        citations = self.extract_citations(llm_response)
-
         # Get context documents
         context_docs = [
             result.document for result in retrieval_result.reranked_results
         ]
 
-        # Validate citations
-        valid_citations, invalid_citations = self.validate_citations(
-            citations, context_docs
-        )
+        # Generate citations from retrieval results (not from LLM output)
+        seen = set()
+        citations = []
+        for result in retrieval_result.reranked_results:
+            doc = result.document
+            citation = f"Source: {doc.source_file}, Page: {doc.page_number}"
+            if citation not in seen:
+                seen.add(citation)
+                citations.append(citation)
 
-        # Log validation results
-        if invalid_citations:
-            logger.warning(
-                f"Found {len(invalid_citations)} invalid citations: {invalid_citations}"
-            )
-
-            if self.strict_validation:
-                raise ValueError(
-                    f"Response contains invalid citations: {invalid_citations}"
-                )
-
-        if self.require_citations and not citations:
-            logger.warning("Response contains no citations (medical safety concern)")
-
-        # Strip citations from answer text (optional - keep them for now)
-        # answer_text = self._remove_citations(llm_response)
-        answer_text = llm_response  # Keep citations in answer
+        answer_text = llm_response
 
         # Create GeneratedResponse
         response = GeneratedResponse(
