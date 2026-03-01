@@ -45,8 +45,11 @@ JSON Response: { answer, citations, guard_info, metrics }
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/Soon66070020/Rag_Pj.git
+mkdir PJ_Rag
+
 cd PJ_Rag
+
+git clone https://github.com/Soon66070020/Rag_Pj.git
 ```
 
 ### 2. Create virtual environment
