@@ -56,8 +56,6 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
-data/evaluation/*
-!data/evaluation/.gitkeep
 
 # Model Cache
 models_cache/
@@ -90,7 +88,6 @@ dmypy.json
 # Documentation
 docs/_build/
 PROJECT_STRUCTURE_THESIS.md
-CLAUDE.md
 
 # Temporary files
 *.tmp

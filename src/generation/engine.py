@@ -180,8 +180,8 @@ class GenerationEngine:
                     time.time() - start_time
                 )
 
-            # Step 5: Parse and validate response
-            logger.info("Parsing response and validating citations...")
+            # Step 5: Parse response and generate citations from retrieval results
+            logger.info("Parsing response...")
             parsed_response = self.response_parser.parse_response(
                 llm_response=llm_response["content"],
                 retrieval_result=retrieval_result,
@@ -189,20 +189,6 @@ class GenerationEngine:
                 generation_time_ms=(time.time() - start_time) * 1000,
                 model_name=llm_response.get("model", "deepseek-chat")
             )
-
-            # Check citation quality
-            quality = self.response_parser.check_citation_quality(
-                llm_response["content"],
-                retrieval_result
-            )
-
-            if not quality["has_citations"]:
-                logger.warning("Response has no citations (medical safety concern)")
-
-            if quality["invalid_citations"]:
-                logger.warning(
-                    f"Response has invalid citations: {quality['invalid_citations']}"
-                )
 
             logger.info(
                 f"Generation complete: {len(parsed_response.answer)} chars, "

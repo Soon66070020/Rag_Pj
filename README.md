@@ -1,289 +1,261 @@
 # Post-Oral Surgery Intelligent Assessment & Advisory System
 
-> RAG-based Medical Q&A System with **Thai Language Support** 🇹🇭
+RAG-based Q&A system for dental post-operative care, designed for Thai language.
 
-A Retrieval-Augmented Generation (RAG) system designed specifically for post-oral surgery patients, providing accurate medical guidance in Thai language using DeepSeek LLM, Weaviate vector database, and BGE-M3 multilingual embeddings.
-
-## 🌟 Features
-
-- **Thai Language Primary Support**: Fully optimized for Thai queries and mixed Thai-English medical documents
-- **Hybrid Search**: Combines dense (semantic) and sparse (lexical) retrieval for optimal accuracy
-- **Advanced Reranking**: Uses BGE-Reranker-v2-m3 for precise relevance scoring
-- **Token-Based Chunking**: Thai token counting using pythainlp for accurate semantic segmentation
-- **DeepSeek Reasoner**: Advanced reasoning model with 128K context and thinking process
-- **Strict Citation Enforcement**: All responses include mandatory source citations
-- **Category-Based Filtering**: Automatic intent classification (Emergency, Medication, Nutrition, Post-op Care)
-- **Medical Domain Optimized**: Conservative temperature settings and fact-based responses
-
-## 🏗️ Architecture
+## Architecture
 
 ```
-User Query (Thai) → Query Processor (HyDE + BGE-M3) → Metadata Filter
-                     ↓
-          Hybrid Searcher (Weaviate) → BGE Reranker → Prompt Builder
-                     ↓
-          DeepSeek Reasoner (128K) → Citation Enforcer → Thai Response with Citations
+User Query (Thai)
+    |
+    v
+[Query Guard Pipeline - 3 LLMs]
+    LLM1: Scope Check (in-scope / out-of-domain)
+    LLM2: Clarification + Query Rewrite (with patient context)
+    LLM3: Multi-Category Classification (Emergency, Medication, Nutrition, Post-op Care)
+    |
+    v
+[Hybrid Search - Weaviate]
+    Dense: BGE-M3 embeddings
+    Sparse: BM25 keyword matching
+    Category filter: contains_any from LLM3 classification
+    |
+    v
+[Reranker - BGE-Reranker-v2-m3]
+    Cross-encoder scoring -> Top 5 results
+    |
+    v
+[Generation - DeepSeek Reasoner]
+    System prompt (Thai nurse persona)
+    Patient summary + flow assessments (if available)
+    Retrieved context (content only)
+    |
+    v
+JSON Response: { answer, citations, guard_info, metrics }
 ```
 
-## 📋 Prerequisites
+## Prerequisites
 
-- Python 3.10 or higher
-- CUDA-capable GPU (recommended for embeddings)
-- Weaviate database instance
+- Python 3.10+
+- Docker (for Weaviate)
+- CUDA-capable GPU (recommended, CPU also works)
 - DeepSeek API key
 
-## 🚀 Quick Start
+## Installation
 
-### 1. Clone and Setup
+### 1. Clone the repository
 
 ```bash
+git clone <repo-url>
 cd PJ_Rag
 ```
 
-### 2. Create Virtual Environment
+### 2. Create virtual environment
 
 ```bash
-python -m venv venv
+python -m venv env_rag
 
 # Windows
-venv\Scripts\activate
+env_rag\Scripts\activate
 
 # Linux/Mac
-source venv/bin/activate
+source env_rag/bin/activate
 ```
 
-### 3. Install Dependencies
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
-
-# For development
-pip install -r requirements-dev.txt
 ```
 
-### 4. Configure Environment
+### 4. Configure environment
 
 ```bash
-# Copy environment template
 cp .env.example .env
-
-# Edit .env and add your API keys
-# DEEPSEEK_API_KEY=your_key_here
-# WEAVIATE_URL=http://localhost:8080
 ```
 
-### 5. Start Weaviate (Docker)
+Edit `.env` and set:
+- `DEEPSEEK_API_KEY` - Your DeepSeek API key
+- `WEAVIATE_URL` - Weaviate URL (default: `http://localhost:8080`)
+
+### 5. Start Weaviate
 
 ```bash
-docker-compose up -d weaviate
+docker-compose up -d
 ```
 
-### 6. Setup Database Schema
+### 6. Setup database schema
 
 ```bash
 python scripts/setup_database.py
 ```
 
-### 7. Ingest Documents
+### 7. Ingest documents
+
+Place PDF documents in `data/raw/`, then run:
 
 ```bash
-# Place your Thai/English PDF documents in data/raw/
-python scripts/ingest_documents.py
+python scripts/ingest_documents.py --directory data/raw
 ```
 
-### 8. Run Interactive Demo
+## Running the API
 
 ```bash
-python scripts/interactive_demo.py
+uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
-## 📁 Project Structure
+Swagger UI: http://localhost:8000/docs
+
+## API Endpoints
+
+### POST /generate
+
+Full RAG pipeline: query guard + hybrid search + rerank + generate answer.
+
+**Request body**: Patient assessment JSON (see `examples/API_input_ex.json`)
+
+Key fields:
+- `patient.assessment_data.additional_questions` - The user's question
+- `flows` - Symptom assessment results per topic
+- `summary` - Overall risk assessment summary
+
+**Example request**:
+
+```bash
+curl -X POST http://localhost:8000/generate \
+  -H "Content-Type: application/json" \
+  -d @examples/API_input_ex.json
+```
+
+**Response**:
+
+```json
+{
+  "answer": "ควรประคบครั้งละ 15-20 นาที...",
+  "citations": [
+    "Source: postop_care.pdf, Page: 3",
+    "Source: compression_guide.pdf, Page: 1"
+  ],
+  "query": "ควรประคบนานแค่ไหน? ใช้น้ำแข็งหรือเจลเย็นดีกว่ากัน?",
+  "retrieval_time_ms": 245.3,
+  "generation_time_ms": 1823.5,
+  "documents_used": 5,
+  "guard": {
+    "is_in_scope": true,
+    "clarification_needed": false,
+    "original_query": "ควรประคบนานแค่ไหน?...",
+    "effective_query": "ควรประคบนานแค่ไหน?...",
+    "classification": [
+      {"category": "Post-op Care", "confidence": 0.95}
+    ],
+    "guard_time_ms": 312.7
+  }
+}
+```
+
+### GET /health
+
+```json
+{
+  "status": "ok",
+  "models_loaded": true
+}
+```
+
+## Project Structure
 
 ```
 PJ_Rag/
-├── config/                 # Configuration files
-│   ├── model_config.yaml   # Model parameters
-│   ├── weaviate_schema.json # Database schema
-│   ├── prompts.yaml        # Prompt templates
-│   └── settings.py         # Configuration loader
+├── api/                            # FastAPI service
+│   ├── main.py                     # POST /generate, GET /health
+│   └── models.py                   # Pydantic request/response schemas
 │
 ├── src/
-│   ├── core/              # Core data types and exceptions
-│   │   ├── types.py       # Dataclasses
-│   │   └── exceptions.py  # Custom exceptions
+│   ├── core/                       # Core types and exceptions
+│   │   ├── types.py                # Dataclasses (Query, Document, RetrievalResult, etc.)
+│   │   └── exceptions.py           # Custom exception hierarchy
 │   │
-│   ├── knowledge_base/    # Module 1: Document Management
-│   ├── retrieval/         # Module 2: Retrieval Engine ⭐
-│   ├── generation/        # Module 3: Response Generation ⭐
-│   ├── evaluation/        # Module 4: Evaluation & Logging
-│   ├── database/          # Weaviate client
-│   └── utils/             # Utilities (Thai text processing)
+│   ├── retrieval/                  # Query processing and search
+│   │   ├── query_guard.py          # 3-LLM guard pipeline (scope, clarify, classify)
+│   │   ├── query_processor.py      # Q2D expansion, embedding generation
+│   │   ├── hybrid_search.py        # Dense + sparse search with category filtering
+│   │   ├── reranker.py             # BGE cross-encoder reranking
+│   │   └── service.py              # Orchestrates retrieval pipeline
+│   │
+│   ├── generation/                 # LLM response generation
+│   │   ├── client.py               # DeepSeek API client
+│   │   ├── prompt_builder.py       # Context formatting and prompt construction
+│   │   ├── response_parser.py      # Citation generation from retrieval results
+│   │   └── engine.py               # Generation pipeline orchestration
+│   │
+│   ├── knowledge_base/             # Document ingestion
+│   │   ├── loader.py               # PDF loading
+│   │   ├── chunker.py              # Thai token-based chunking
+│   │   ├── metadata_extractor.py   # Taxonomy-based multi-category extraction
+│   │   ├── embedding_generator.py  # BGE-M3 embedding generation
+│   │   └── indexer.py              # Weaviate indexing
+│   │
+│   ├── database/                   # Weaviate integration
+│   │   ├── connector.py            # Connection management
+│   │   └── manager.py              # Schema and CRUD operations
+│   │
+│   └── utils/
+│       └── text_processing.py      # Thai text processing, taxonomy inference
 │
-├── data/                  # Data directories
-│   ├── raw/              # Source PDFs
-│   ├── processed/        # Processed chunks
-│   └── evaluation/       # Test datasets
+├── config/
+│   ├── settings.py                 # Configuration loader
+│   ├── model_config.yaml           # Model and pipeline parameters
+│   ├── prompts.yaml                # System prompts, guard prompts, Q2D templates
+│   ├── taxonomy.yaml               # 2-level category taxonomy with Thai keywords
+│   └── weaviate_schema.json        # Database collection schema
 │
-├── scripts/              # Utility scripts
-├── tests/                # Test suite
-├── notebooks/            # Jupyter notebooks
-└── logs/                 # Application logs
+├── scripts/
+│   ├── setup_database.py           # Create Weaviate schema
+│   └── ingest_documents.py         # Process and index PDF documents
+│
+├── examples/
+│   └── API_input_ex.json           # Example API request payload
+│
+├── data/
+│   ├── raw/                        # Source PDF documents
+│   └── processed/                  # Processed chunks
+│
+├── docker-compose.yml              # Weaviate service
+├── requirements.txt
+├── .env.example                    # Environment variable template
+└── README.md
 ```
 
-## 🇹🇭 Thai Language Support
+## Configuration
 
-The system is specifically designed for Thai language:
+### Model Parameters (`config/model_config.yaml`)
 
-### Text Processing
-- **pythainlp** integration for Thai tokenization and normalization
-- **Token-based chunking**: Uses `word_tokenize` for accurate chunk sizing
-- Unicode NFC normalization to preserve Thai characters
-- Mixed Thai-English document handling
+| Component | Model | Purpose |
+|-----------|-------|---------|
+| Embedding | `BAAI/bge-m3` | Dense + sparse vectors for hybrid search |
+| Reranker | `BAAI/bge-reranker-v2-m3` | Cross-encoder relevance scoring |
+| Generation | `deepseek-reasoner` | Answer generation (128K context) |
+| Q2D / Guard | `deepseek-chat` | Query expansion and guard pipeline |
 
-### Embeddings
-- **BGE-M3** multilingual model with native Thai support
-- Dual vectors: dense (semantic) + sparse (lexical)
-- No fine-tuning required
+### Retrieval Parameters
 
-### Response Generation
-- **DeepSeek Reasoner** with thinking process for accurate medical responses
-- Proper medical terminology and polite tone (ครับ/ค่ะ)
-- Thai filename support in citations
-- Reasoning tokens logged for transparency
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `alpha` | 0.7 | Hybrid search blending (0=sparse, 1=dense) |
+| `top_k` | 20 | Initial candidates from hybrid search |
+| `top_n` | 5 | Final results after reranking |
+| `use_q2d` | true | Enable Q2D query expansion |
 
-### Category Inference
-Uses Thai medical keywords:
-- ยา, แก้ปวด, ปฏิชีวนะ → Medication
-- เลือดออก, ปวดมาก, ไข้สูง → Emergency
-- อาหาร, กิน, ดื่ม → Nutrition
+### Prompts (`config/prompts.yaml`)
 
-## 🧪 Testing
+- `system_prompt` - Thai nurse persona with response format templates
+- `scope_check_prompt` - LLM1: dental post-op scope validation
+- `clarification_check_prompt` - LLM2: query clarity + rewrite with patient context
+- `classification_prompt` - LLM3: multi-category classification
 
-```bash
-# Run all tests
-pytest
+### Taxonomy (`config/taxonomy.yaml`)
 
-# Run with coverage
-pytest --cov=src tests/
-
-# Run specific test module
-pytest tests/unit/test_query_processor.py
-```
-
-## 📊 Evaluation Metrics
-
-### Retrieval Quality
-- Precision@K, Recall@K
-- MRR (Mean Reciprocal Rank)
-- nDCG (Normalized Discounted Cumulative Gain)
-
-### Generation Quality
-- BERTScore, BLEU, METEOR, ROUGE
-- Human evaluation (Correctness, Relevance, Helpfulness)
-- LLM-as-a-Judge automated scoring
-
-## 🔧 Configuration
-
-### Model Parameters (config/model_config.yaml)
-
-```yaml
-retrieval:
-  alpha: 0.7      # Hybrid search blending
-  top_k: 20       # Initial candidates
-  top_n: 5        # Final reranked results
-  use_hyde: true  # Enable HyDE expansion
-
-llm:
-  model_name: "deepseek-reasoner"  # 128K context, 64K output
-  temperature: 0.1  # Conservative for medical accuracy
-  max_tokens: 16384
-  timeout: 120  # Increased for reasoning model
-
-chunking:
-  chunk_size: 256       # Thai tokens (not characters)
-  chunk_overlap: 30
-  use_token_count: true # Count tokens instead of chars
-```
-
-### Pricing (DeepSeek Reasoner)
-| Type | Price |
-|------|-------|
-| Input (cache hit) | $0.028/M tokens |
-| Input (cache miss) | $0.28/M tokens |
-| Output | $0.42/M tokens |
-
-### Prompts (config/prompts.yaml)
-
-Customize system prompts, HyDE templates, and citation formats.
-
-## 📚 Example Usage
-
-```python
-from src.retrieval.retrieval_pipeline import RetrievalPipeline
-from src.generation.response_pipeline import ResponsePipeline
-
-# Initialize pipelines
-retrieval_pipeline = RetrievalPipeline(...)
-response_pipeline = ResponsePipeline(...)
-
-# Process Thai query
-query = "ฉันควรกินอะไรหลังผ่าตัดฟัน?"
-
-# Retrieve relevant context
-retrieval_result = retrieval_pipeline.retrieve(query)
-
-# Generate response with citations
-response = response_pipeline.generate_response(query, retrieval_result)
-
-print(response.answer)
-# Output: "หลังผ่าตัดฟันคุณควรกินอาหารอ่อนและเย็น เช่น โจ๊ก ซุป...
-#          [Source: nutrition_guide.pdf, Page: 12]"
-```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **pythainlp not found**
-   ```bash
-   pip install pythainlp>=4.0.0
-   ```
-
-2. **Weaviate connection error**
-   ```bash
-   # Check Weaviate is running
-   docker ps
-   # Restart if needed
-   docker-compose restart weaviate
-   ```
-
-3. **CUDA out of memory**
-   - Reduce batch_size in model_config.yaml
-   - Use CPU mode: set `device: "cpu"`
-
-## 📖 Documentation
-
-- [PLAN_API_E5_LARGE.md](PLAN_API_E5_LARGE.md) - API & E5-Large migration plan
-
-## 🤝 Contributing
-
-1. Create a feature branch
-2. Make your changes
-3. Add tests
-4. Run `black` and `mypy` for code quality
-5. Submit a pull request
-
-## 📄 License
-
-[Specify your license here]
-
-## 👥 Authors
-
-- [Your Name/Team]
-
-## 🙏 Acknowledgments
-
-- **BGE-M3** by BAAI for multilingual embeddings
-- **DeepSeek** for LLM API
-- **Weaviate** for vector database
-- **pythainlp** for Thai NLP support
+2-level category hierarchy with Thai keywords:
+- **Emergency** - bleeding, severe pain, high fever, swelling, breathing difficulty
+- **Medication** - painkillers, antibiotics, anti-inflammatory, mouthwash
+- **Nutrition** - soft food, forbidden food, drinks, supplements
+- **Post-op Care** - wound care, compression, oral hygiene, activity, sutures, numbness, sleep position, swelling

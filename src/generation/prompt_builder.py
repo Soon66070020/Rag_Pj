@@ -26,7 +26,6 @@ class PromptBuilder:
     Attributes:
         system_prompt: Base system instruction template.
         empty_context_prompt: Fallback for when no context is found.
-        citation_instruction: Citation format requirements.
         max_context_length: Maximum tokens for context section.
 
     Example:
@@ -48,7 +47,6 @@ class PromptBuilder:
         """
         self.system_prompt = prompts_config.get('system_prompt', '')
         self.empty_context_prompt = prompts_config.get('empty_context_prompt', '')
-        self.citation_instruction = prompts_config.get('citation_format_instruction', '')
         self.max_context_length = max_context_length
 
         if not self.system_prompt:
@@ -238,78 +236,6 @@ ANSWER (in Thai):"""
         ]
 
         return messages
-
-    def extract_context_sources(
-        self,
-        retrieval_result: RetrievalResult
-    ) -> List[Dict[str, Any]]:
-        """Extract source information from retrieval result.
-
-        Useful for citation validation.
-
-        Args:
-            retrieval_result: Retrieval pipeline result.
-
-        Returns:
-            List of dicts with source metadata:
-                [{"source_file": "...", "page_number": ..., "content": "..."}, ...]
-
-        Example:
-            >>> sources = builder.extract_context_sources(result)
-            >>> for src in sources:
-            ...     print(f"{src['source_file']}:{src['page_number']}")
-        """
-        sources = []
-
-        for result in retrieval_result.reranked_results:
-            doc = result.document
-            sources.append({
-                "source_file": doc.source_file,
-                "page_number": doc.page_number,
-                "category": doc.category,
-                "content": doc.content,
-                "score": result.score
-            })
-
-        return sources
-
-    def validate_context_quality(
-        self,
-        retrieval_result: RetrievalResult,
-        min_score: float = 0.5,
-        min_results: int = 1
-    ) -> bool:
-        """Check if retrieved context is sufficient for generation.
-
-        Args:
-            retrieval_result: Retrieval result to validate.
-            min_score: Minimum acceptable relevance score.
-            min_results: Minimum number of results required.
-
-        Returns:
-            True if context quality is acceptable.
-
-        Example:
-            >>> if builder.validate_context_quality(result, min_score=0.6):
-            ...     # Proceed with generation
-            ... else:
-            ...     # Return "insufficient information" message
-        """
-        results = retrieval_result.reranked_results
-
-        # Check if we have enough results
-        if len(results) < min_results:
-            logger.warning(f"Only {len(results)} results, need at least {min_results}")
-            return False
-
-        # Check if top result meets minimum score
-        if results and results[0].score < min_score:
-            logger.warning(
-                f"Top result score {results[0].score:.2f} below threshold {min_score}"
-            )
-            return False
-
-        return True
 
     def _check_summary_coverage(
         self,
