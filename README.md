@@ -45,7 +45,7 @@ JSON Response: { answer, citations, guard_info, metrics }
 ### 1. Clone the repository
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Soon66070020/Rag_Pj.git
 cd PJ_Rag
 ```
 
@@ -54,8 +54,8 @@ cd PJ_Rag
 ```bash
 python -m venv env_rag
 
-# Windows
-env_rag\Scripts\activate
+# Windows (Powershell)
+./env_rag/Scripts/Activate.ps1
 
 # Linux/Mac
 source env_rag/bin/activate
