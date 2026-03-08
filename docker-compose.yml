@@ -1,10 +1,11 @@
 version: '3.8'
 
 services:
+  # Weaviate Vector Database
   weaviate:
     image: cr.weaviate.io/semitechnologies/weaviate:1.25.0
     container_name: weaviate_rag
-    restart: on-failure:0
+    restart: on-failure:3
     ports:
       - "8080:8080"
       - "50051:50051"
@@ -12,11 +13,62 @@ services:
       QUERY_DEFAULTS_LIMIT: 25
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
       PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
-      DEFAULT_VECTORIZER_MODULE: 'none'  # We use custom embeddings
+      DEFAULT_VECTORIZER_MODULE: 'none'
       ENABLE_MODULES: ''
       CLUSTER_HOSTNAME: 'node1'
     volumes:
       - weaviate_data:/var/lib/weaviate
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # One-shot init: schema creation + document ingestion
+  rag-setup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag_setup
+    command: ["setup"]
+    env_file:
+      - .env
+    environment:
+      WEAVIATE_URL: http://weaviate:8080
+    volumes:
+      - ./data/raw:/app/data/raw:ro
+      - ./models_cache:/app/models_cache
+      - ./pythainlp_data:/app/pythainlp_data
+      - ./logs:/app/logs
+    depends_on:
+      weaviate:
+        condition: service_healthy
+    restart: "no"
+
+  # RAG API Service (FastAPI + BGE-M3 + Reranker)
+  rag-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag_api
+    command: ["api"]
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      WEAVIATE_URL: http://weaviate:8080
+    volumes:
+      - ./models_cache:/app/models_cache
+      - ./pythainlp_data:/app/pythainlp_data
+      - ./logs:/app/logs
+    depends_on:
+      weaviate:
+        condition: service_healthy
+      rag-setup:
+        condition: service_completed_successfully
+    restart: on-failure:3
 
 volumes:
   weaviate_data:

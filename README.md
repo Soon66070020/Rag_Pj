@@ -100,13 +100,66 @@ Place PDF documents in `data/raw/`, then run:
 python scripts/ingest_documents.py --directory data/raw
 ```
 
-## Running the API
+## Running the API (Local)
 
 ```bash
 uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
 Swagger UI: http://localhost:8000/docs
+
+## Docker
+
+Run the entire system with one command. No Python, pip, or model setup needed.
+
+### Prerequisites
+
+- Docker Engine 24+ and Docker Compose v2
+- At least 8GB RAM available to Docker
+- ~5GB disk space (Docker image + model downloads)
+
+> **Note:** Docker image uses CPU-only PyTorch. Embedding and reranking will be slower than GPU.
+> For production with high traffic, a GPU setup is recommended.
+
+### Quick Start
+
+```bash
+# 1. Configure
+cp .env.example .env
+# Edit .env → set DEEPSEEK_API_KEY
+
+# 2. Add documents
+cp /path/to/your/documents/*.pdf data/raw/
+
+# 3. Start
+docker-compose up --build
+```
+
+First run takes 5-10 minutes (model download + document ingestion).
+Subsequent starts take 1-2 minutes (models cached in `models_cache/`).
+
+### Verify
+
+```bash
+curl http://localhost:8000/health
+# {"status":"ok","models_loaded":true}
+```
+
+### Common Operations
+
+```bash
+# Re-ingest documents (after adding new files to data/raw/)
+docker-compose run --rm rag-api ingest
+
+# View logs
+docker-compose logs -f rag-api
+
+# Stop everything
+docker-compose down
+
+# Stop and remove all data (including Weaviate data)
+docker-compose down -v
+```
 
 ## API Endpoints
 
@@ -222,7 +275,9 @@ PJ_Rag/
 │   ├── raw/                        # Source PDF documents
 │   └── processed/                  # Processed chunks
 │
-├── docker-compose.yml              # Weaviate service
+├── Dockerfile                      # Multi-stage build (CPU-only torch)
+├── docker-compose.yml              # Weaviate + rag-setup + rag-api
+├── docker-entrypoint.sh            # Entrypoint script (api/setup/ingest)
 ├── requirements.txt
 ├── .env.example                    # Environment variable template
 └── README.md

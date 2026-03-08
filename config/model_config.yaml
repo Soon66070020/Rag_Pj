@@ -8,7 +8,7 @@ embedding:
   batch_size: 128
   max_length: 512
   normalize_embeddings: true
-  device: "cuda"  # or "cpu" if GPU not available
+  device: null  # null = auto-detect (CUDA if available, else CPU)
 
 # BGE-Reranker Model (Multilingual)
 reranker:
@@ -16,7 +16,7 @@ reranker:
   top_n: 5  # Final number of documents after reranking
   batch_size: 128
   use_fp16: true
-  device: "cuda"  # or "cpu"
+  device: null  # null = auto-detect (CUDA if available, else CPU)
 
 # DeepSeek LLM Configuration (deepseek-reasoner with thinking mode)
 llm:

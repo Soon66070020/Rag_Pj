@@ -1,0 +1,51 @@
+# Virtual environment
+env_rag/
+venv/
+.venv/
+
+# Model cache (mounted as volume)
+models_cache/
+
+# pythainlp data (mounted as volume)
+pythainlp_data/
+
+# Source documents (mounted as volume)
+data/raw/*
+data/processed/*
+
+# Logs and outputs
+logs/
+outputs/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Environment files (injected via compose)
+.env
+.env.local
+
+# Docker files
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Claude Code
+.claude/
+CLAUDE.md
+
+# Misc
+*.log
+*.tmp
+*.bak

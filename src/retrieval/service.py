@@ -124,7 +124,7 @@ class RetrievalService:
             model_name=reranker_config.get('model_name', 'BAAI/bge-reranker-v2-m3'),
             top_n=self.top_n,
             batch_size=reranker_config.get('batch_size', 32),
-            device=reranker_config.get('device', 'cuda'),
+            device=reranker_config.get('device', None),
             use_fp16=reranker_config.get('use_fp16', True)
         )
 
